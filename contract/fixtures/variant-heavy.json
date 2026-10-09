@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "1.2.0",
+  "screenId": "kfc_home",
+  "layout": "default",
+  "theme": "default",
+  "header": {
+    "id": "heavy_header",
+    "type": "header_greeting",
+    "version": 1,
+    "props": {
+      "title": "¡Qué bueno verte, {{firstName}}!",
+      "subtitle": "Eres de nuestros clientes más frecuentes",
+      "position": "sticky",
+      "variant": "default"
+    }
+  },
+  "sections": [
+    {
+      "id": "heavy_benefit",
+      "type": "announcement_bar",
+      "version": 1,
+      "props": {
+        "message": "🏅 Por tus 14 pedidos de este mes, tus próximos 3 deliveries son gratis",
+        "variant": "dark",
+        "isDismissible": false
+      }
+    },
+    {
+      "id": "heavy_coupon",
+      "type": "coupon_card",
+      "version": 1,
+      "props": {
+        "title": "Sólo para ti",
+        "description": "{{firstName}}, 25% de descuento en tu próximo Mega por ser cliente frecuente.",
+        "code": "FIEL25",
+        "validUntilLabel": "Válido hasta el domingo 11:59 pm",
+        "badge": "CUPÓN"
+      }
+    },
+    {
+      "id": "heavy_usuals",
+      "type": "featured_products",
+      "version": 1,
+      "props": {
+        "title": "Tus de siempre 🔁",
+        "layout": "carousel",
+        "items": [
+          { "id": "usual_001", "name": "Big Box Original", "description": "Lo pediste 9 veces", "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/products/mega-promo-10-piezas-202602160411385589.jpg", "price": "S/ 24.90" },
+          { "id": "usual_002", "name": "Twister XL", "description": "Lo pediste 7 veces", "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/sections/twister_delivery.jpg", "price": "S/ 21.90" },
+          { "id": "usual_003", "name": "Mega 8 Piezas", "description": "Lo pediste 4 veces", "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/products/mega-promo-8-piezas-202602160411187422.jpg", "price": "S/ 69.90" },
+          { "id": "usual_004", "name": "Para ti", "description": "Lo pediste 3 veces", "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/sections/para_ti_delivery.jpg", "price": "S/ 18.90" }
+        ]
+      }
+    },
+    {
+      "id": "heavy_reorder",
+      "type": "promo_banner",
+      "version": 1,
+      "props": {
+        "title": "Pide de nuevo",
+        "description": "Tu último pedido: Big Box Original + Twister XL. Repítelo en un toque.",
+        "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/products/duo-twister-xl-con-papas-202602160411547690.jpg",
+        "badge": "1 TOQUE"
+      }
+    }
+  ],
+  "meta": {
+    "title": "KFC Perú - Inicio",
+    "description": "Vista Usuario heavy."
+  }
+}

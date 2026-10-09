@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "1.2.0",
+  "screenId": "kfc_home",
+  "layout": "default",
+  "theme": "christmas",
+  "header": {
+    "id": "christmas_header",
+    "type": "header_greeting",
+    "version": 1,
+    "props": {
+      "title": "¡Felices fiestas, {{firstName}}! 🎄",
+      "subtitle": "Esta Navidad, la cena la ponemos nosotros",
+      "position": "sticky",
+      "variant": "default"
+    }
+  },
+  "sections": [
+    {
+      "id": "christmas_announcement",
+      "type": "announcement_bar",
+      "version": 1,
+      "props": {
+        "message": "🎁 Reserva tu pedido de Nochebuena y recógelo el 24 sin filas",
+        "variant": "dark",
+        "isDismissible": false
+      }
+    },
+    {
+      "id": "christmas_feast",
+      "type": "promo_banner",
+      "version": 1,
+      "props": {
+        "title": "Banquete navideño",
+        "description": "Mega Familiar 15 Piezas + 3 papas + ensalada + bebida 1.5L para toda la familia.",
+        "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/sections/para_compartir_delivery.jpg",
+        "badge": "NAVIDAD"
+      }
+    },
+    {
+      "id": "christmas_table",
+      "type": "featured_products",
+      "version": 1,
+      "props": {
+        "title": "Para la mesa navideña 🍗",
+        "layout": "grid",
+        "items": [
+          { "id": "xmas_001", "name": "Mega Familiar 15 Piezas", "description": "Para 6 a 8 personas", "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/products/mega-promo-8-piezas-202602160411187422.jpg", "price": "S/ 89.90" },
+          { "id": "xmas_002", "name": "Para Compartir", "description": "Para 4 a 5 personas", "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/sections/para_compartir_delivery.jpg", "price": "S/ 64.90" },
+          { "id": "xmas_003", "name": "Mega 10 Piezas", "description": "Con papas familiares", "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/products/mega-promo-10-piezas-202602160411385589.jpg", "price": "S/ 74.90" },
+          { "id": "xmas_004", "name": "Para 2", "description": "Para la cena de a dos", "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/sections/para_2_delivery.jpg", "price": "S/ 39.90" }
+        ]
+      }
+    },
+    {
+      "id": "christmas_preorder",
+      "type": "coupon_card",
+      "version": 1,
+      "props": {
+        "title": "Pre-orden de Nochebuena",
+        "description": "{{firstName}}, reserva antes del 20 de diciembre y llévate un postre gratis.",
+        "code": "NAVIDAD26",
+        "validUntilLabel": "Válido hasta el 20 de diciembre",
+        "badge": "RESERVA"
+      }
+    }
+  ],
+  "meta": {
+    "title": "KFC Perú - Navidad",
+    "description": "Vista temática Navidad."
+  }
+}

@@ -1,0 +1,66 @@
+[
+  {
+    "id": "incident",
+    "name": "Aviso de incidencia",
+    "description": "Avisa a todas las vistas de un problema operativo. No se puede cerrar.",
+    "priority": 1,
+    "audience": null,
+    "enabledByDefault": false,
+    "section": {
+      "id": "bottom_bar_incident",
+      "type": "bottom_bar",
+      "version": 1,
+      "props": {
+        "title": "Tenemos demoras en delivery",
+        "message": "Algunas zonas tienen retrasos. El recojo en tienda funciona con normalidad.",
+        "variant": "warning",
+        "icon": "warning",
+        "isDismissible": false
+      }
+    }
+  },
+  {
+    "id": "address",
+    "name": "Pedir dirección al abrir la app",
+    "description": "Pide la dirección de entrega apenas se abre la Home, en todas las vistas.",
+    "priority": 2,
+    "audience": null,
+    "enabledByDefault": false,
+    "section": {
+      "id": "bottom_bar_address",
+      "type": "bottom_bar",
+      "version": 1,
+      "props": {
+        "title": "¿Dónde te llevamos tu pedido?",
+        "message": "Agrega tu dirección para ver precios y tiempos de tu zona.",
+        "cta": { "label": "Agregar" },
+        "variant": "dark",
+        "icon": "map-pin",
+        "isDismissible": true
+      }
+    }
+  },
+  {
+    "id": "register",
+    "name": "Invitar a registrarse",
+    "description": "Invita a crear una cuenta a quien navega sin sesión.",
+    "priority": 3,
+    "audience": ["guest"],
+    "enabledByDefault": true,
+    "section": {
+      "id": "bottom_bar_register",
+      "type": "bottom_bar",
+      "version": 1,
+      "props": {
+        "title": "Crea tu cuenta y llévate 10% en tu primer pedido",
+        "cta": {
+          "label": "Registrarme",
+          "actions": { "onPress": [{ "type": "NAVIGATE", "payload": { "url": "/ingresar" } }] }
+        },
+        "variant": "brand",
+        "icon": "gift",
+        "isDismissible": true
+      }
+    }
+  }
+]

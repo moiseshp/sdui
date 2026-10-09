@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "1.2.0",
+  "screenId": "kfc_home",
+  "layout": "default",
+  "theme": "default",
+  "header": {
+    "id": "logged_header",
+    "type": "header_greeting",
+    "version": 1,
+    "props": {
+      "title": "¡Hola, {{firstName}}!",
+      "subtitle": "¿Qué se te antoja hoy?",
+      "position": "sticky",
+      "variant": "default"
+    }
+  },
+  "sections": [
+    {
+      "id": "logged_announcement",
+      "type": "announcement_bar",
+      "version": 1,
+      "props": {
+        "message": "🔓 Solo con tu cuenta: delivery gratis en pedidos desde S/ 39.90 hasta el domingo",
+        "variant": "dark",
+        "isDismissible": true
+      }
+    },
+    {
+      "id": "logged_picked_for_you",
+      "type": "featured_products",
+      "version": 1,
+      "props": {
+        "title": "Elegidos para ti ⭐",
+        "layout": "carousel",
+        "items": [
+          { "id": "prod_002", "name": "Big Box Original", "description": "Porque siempre vuelves a tu Big Box", "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/products/mega-promo-10-piezas-202602160411385589.jpg", "price": "S/ 24.90", "originalPrice": "S/ 27.90", "badge": "-15%" },
+          { "id": "prod_004", "name": "Dúo Twister XL con papas", "description": "Ideal para tus almuerzos de semana", "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/products/duo-twister-xl-con-papas-202602160411547690.jpg", "price": "S/ 32.90", "originalPrice": "S/ 38.90", "badge": "-15%" },
+          { "id": "prod_001", "name": "Mega Familiar 15 Piezas", "description": "Para tus viernes en familia", "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/products/mega-promo-8-piezas-202602160411187422.jpg", "price": "S/ 89.90", "originalPrice": "S/ 109.90", "badge": "-30%" }
+        ]
+      }
+    },
+    {
+      "id": "logged_favorites",
+      "type": "featured_products",
+      "version": 1,
+      "props": {
+        "title": "Tu lista de favoritos ❤️",
+        "layout": "grid",
+        "items": [
+          { "id": "fav_001", "name": "Para ti", "description": "2 piezas de pollo + papas + bebida", "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/sections/para_ti_delivery.jpg", "price": "S/ 18.90" },
+          { "id": "fav_002", "name": "Twister XL", "description": "Twister XL + papas + bebida", "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/sections/twister_delivery.jpg", "price": "S/ 21.90" }
+        ]
+      }
+    },
+    {
+      "id": "logged_today",
+      "type": "promo_banner",
+      "version": 1,
+      "props": {
+        "title": "Solo por hoy",
+        "description": "Mega 8 Piezas a S/ 59.90. Válido hasta las 11:59 pm.",
+        "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/products/mega-promo-8-piezas-202602160411187422.jpg",
+        "badge": "SOLO HOY"
+      }
+    }
+  ],
+  "meta": {
+    "title": "KFC Perú - Inicio",
+    "description": "Vista Logeado."
+  }
+}

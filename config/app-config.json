@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "1.0.0",
+  "brand": {
+    "name": "KFC",
+    "logo": {
+      "defaultUrl": "https://www.kfc.com.pe/images/kfc/logo.svg",
+      "darkUrl": "https://www.kfc.com.pe/images/kfc/logo-white.svg",
+      "alt": "KFC"
+    }
+  }
+}

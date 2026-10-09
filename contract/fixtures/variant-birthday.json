@@ -1,0 +1,70 @@
+{
+  "schemaVersion": "1.2.0",
+  "screenId": "kfc_home",
+  "layout": "default",
+  "theme": "default",
+  "header": {
+    "id": "birthday_header",
+    "type": "header_greeting",
+    "version": 1,
+    "props": {
+      "title": "¡Feliz cumpleaños, {{firstName}}! 🎂",
+      "subtitle": "Hoy la celebración corre por nuestra cuenta",
+      "position": "sticky",
+      "variant": "default"
+    }
+  },
+  "sections": [
+    {
+      "id": "birthday_announcement",
+      "type": "announcement_bar",
+      "version": 1,
+      "props": {
+        "message": "🎉 Tu regalo de cumpleaños está activo solo por hoy",
+        "variant": "dark",
+        "isDismissible": false
+      }
+    },
+    {
+      "id": "birthday_gift",
+      "type": "coupon_card",
+      "version": 1,
+      "props": {
+        "title": "Tu regalo de cumpleaños",
+        "description": "{{firstName}}, llévate un postre y una bebida gratis con cualquier pedido de hoy.",
+        "code": "FELIZCUMPLE",
+        "validUntilLabel": "Válido solo hoy hasta las 11:59 pm",
+        "badge": "REGALO"
+      }
+    },
+    {
+      "id": "birthday_party",
+      "type": "featured_products",
+      "version": 1,
+      "props": {
+        "title": "Arma tu celebración 🎉",
+        "layout": "carousel",
+        "items": [
+          { "id": "party_001", "name": "Mega Familiar 15 Piezas", "description": "Para celebrar con todos", "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/products/mega-promo-8-piezas-202602160411187422.jpg", "price": "S/ 89.90", "originalPrice": "S/ 109.90", "badge": "-30%" },
+          { "id": "party_002", "name": "Para Compartir", "description": "8 piezas + 2 papas familiares + 1.5L bebida", "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/sections/para_compartir_delivery.jpg", "price": "S/ 64.90" },
+          { "id": "party_003", "name": "Chicken Strips x6", "description": "Para picar mientras llegan todos", "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/products/mega-promo-10-piezas-202602160411385589.jpg", "price": "S/ 29.90" }
+        ]
+      }
+    },
+    {
+      "id": "birthday_offer",
+      "type": "promo_banner",
+      "version": 1,
+      "props": {
+        "title": "Bucket fiesta",
+        "description": "12 piezas + 4 bebidas a S/ 69.90. Válido solo hoy.",
+        "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/products/mega-promo-8-piezas-202602160411187422.jpg",
+        "badge": "SOLO HOY"
+      }
+    }
+  ],
+  "meta": {
+    "title": "KFC Perú - Inicio",
+    "description": "Vista Cumpleaños."
+  }
+}

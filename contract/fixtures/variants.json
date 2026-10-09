@@ -1,0 +1,8 @@
+[
+  { "id": "guest", "name": "Default (no logeado)", "description": "Lo que ve quien entra sin sesión: banner, combos, lo más top, promos de la semana y oferta." },
+  { "id": "logged", "name": "Logeado", "description": "Vista inicial al registrarse: saludo, anuncio exclusivo, elegidos para ti, favoritos y Solo por hoy." },
+  { "id": "loyalty", "name": "Loyalty", "description": "Misma home del logeado con la marca en negro y el estado de puntos del Club." },
+  { "id": "christmas", "name": "Navidad", "description": "Tema navideño: banquete, mesa navideña y pre-orden de Nochebuena." },
+  { "id": "heavy", "name": "Usuario heavy", "description": "Beneficio por frecuencia, cupón Sólo para ti y sus pedidos de siempre." },
+  { "id": "birthday", "name": "Cumpleaños", "description": "Saludo de cumpleaños, regalo del día y combos para celebrar." }
+]
