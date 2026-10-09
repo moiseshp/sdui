@@ -63,7 +63,7 @@ export default async function ExperimentsPanelPage() {
                   <div className="min-w-0">
                     <p className="text-sm font-bold">{variant.name}</p>
                     <p className="text-xs text-muted-foreground">{variant.description}</p>
-                    <p className="mt-1 text-xs font-bold text-primary group-hover:underline">Reordenar secciones →</p>
+                    <p className="mt-1 text-xs font-bold text-primary group-hover:underline">Ordenar y ocultar secciones →</p>
                   </div>
                 </Link>
               </li>

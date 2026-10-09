@@ -97,6 +97,18 @@ Pedido del responsable: reordenar con drag and drop las secciones de cada vista,
 - Descartado por ahora: botón «Restablecer» en el panel (D-74), «Descartar cambios» (D-75), `@dnd-kit` (D-76).
 - Posible siguiente paso (fuera de alcance): vista previa en vivo de la Home a un costado del editor, ya que el escritorio tiene espacio.
 
+### Iteración 3.7 — Ocultar y mostrar secciones por vista
+Pedido del responsable: cada sección del editor se puede ocultar o mostrar con un interruptor, y el cambio viaja por el mismo endpoint que reordena. Decisión D-78.
+- [x] Backend: `reorder_sections(p_variant_id, p_section_ids, p_hidden_section_ids default null)` en `supabase/01-schema.sql` (borra la firma vieja; nulo = conservar la visibilidad; valida subconjunto sin repetidos; devuelve `{ sectionIds, hiddenSectionIds }`). `get_home_screen` filtra las secciones `hidden: true` y quita el flag. Permisos actualizados a la firma nueva.
+- [x] Capa de datos: `SectionLayoutResult` y el parámetro opcional `hiddenSectionIds` en `types.ts`, `index.ts`, `adapters/supabase.ts` y `adapters/mock.ts` (el mock guarda la visibilidad en memoria y aplica las mismas reglas).
+- [x] UI: en `/configuracion/[variantId]` cada fila tiene su interruptor; arrastrar y los interruptores solo cambian el borrador y un único «Guardar cambios» envía orden y visibilidad en una sola llamada (ajuste del responsable: en la demo cada paso se explica). Las ocultas se ven atenuadas con la etiqueta «Oculta» y se pueden seguir arrastrando. El enlace del panel pasa a «Ordenar y ocultar secciones →».
+- [x] Alcance de `packages/` (D-79): el interruptor se movió a `app/configuracion/switch.tsx` y ahora lo comparten las iniciativas de la bottom bar y el editor (antes la bottom bar tenía su propia implementación). `packages/ui/input.tsx` pasó a `app/ingresar/input.tsx`.
+- [ ] **Responsable:** decidir si `packages/ui/drawer.tsx` (no lo usa ningún archivo) se retira a `_legacy/`.
+- [x] Docs: `contrato.md`, `decisiones.md` (D-78, D-79), `variantes-y-vistas.md`, `contexto.md`, `arquitectura.md`, `supabase/README.md` y `AGENTS.md`.
+- [ ] **Responsable:** volver a ejecutar `supabase/01-schema.sql` en el SQL Editor de Supabase. Sin esto, con `DATA_SOURCE=supabase` el interruptor falla (la RPC vieja no conoce `p_hidden_section_ids`). No hace falta re-sembrar.
+- [ ] **Responsable:** `npx tsc --noEmit`, `npm run lint` y `npm run dev`. Prueba manual: en `/configuracion/loyalty` apagar una sección y arrastrar otra (debe leerse «Cambios sin guardar: orden y visibilidad» y la Home no debe cambiar aún) → «Guardar cambios» → recargar la Home con una persona en Loyalty (nuevo orden, sin la oculta) → prenderla y guardar (vuelve en su posición) → re-sembrar (vuelve todo al fixture). Revisar también que los interruptores de la bottom bar siguen funcionando igual. Repetir con `mock` y con `supabase`.
+- [ ] Probar `reorder_sections` y `get_home_screen` contra Postgres: ocultos repetidos o desconocidos → error `22023`; `p_hidden_section_ids` nulo conserva la visibilidad; ninguna sección de la Home trae `hidden`.
+
 ### Mantenimiento — Una sola ubicación para mocks (D-77)
 - [x] `mocks/` renombrada a `config/` (solo contiene `app-config.json`, configuración local de marca). Las respuestas simuladas del backend siguen en `contract/fixtures/`.
 - [x] Imports actualizados: `packages/sections/header-default/index.tsx` y `app/ingresar/page.tsx` → `@/config/app-config.json`.

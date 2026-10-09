@@ -10,7 +10,7 @@
  * variables don't need the NEXT_PUBLIC_ prefix.
  */
 
-import type { DataSource, DemoUser, InitiativeSummary, RegisterUserResult, VariantSummary } from '../types';
+import type { DataSource, DemoUser, InitiativeSummary, RegisterUserResult, SectionLayoutResult, VariantSummary } from '../types';
 
 /** Accepts the variable names the Supabase dashboard usually suggests. */
 function readConfig() {
@@ -82,10 +82,15 @@ export const supabaseDataSource: DataSource = {
   setInitiativeEnabled: (initiativeId, enabled) =>
     rpc<InitiativeSummary>('set_initiative_enabled', { p_initiative_id: initiativeId, p_enabled: enabled }),
 
-  // Stored template of a view (tokens not interpolated, no bottomBar): D-74.
+  // Template of a view (tokens not interpolated, no bottomBar, hidden sections flagged): D-74, D-78.
   getVariantScreen: variantId => rpc<unknown | null>('get_variant_screen', { p_variant_id: variantId }),
 
   // Only ids travel; the RPC rejects anything that is not exactly the view's sections (D-74).
-  reorderSections: (variantId, sectionIds) =>
-    rpc<string[]>('reorder_sections', { p_variant_id: variantId, p_section_ids: sectionIds }),
+  // Hidden ids are optional: omitted (null) = keep the current visibility (D-78).
+  reorderSections: (variantId, sectionIds, hiddenSectionIds) =>
+    rpc<SectionLayoutResult>('reorder_sections', {
+      p_variant_id: variantId,
+      p_section_ids: sectionIds,
+      p_hidden_section_ids: hiddenSectionIds ?? null,
+    }),
 };

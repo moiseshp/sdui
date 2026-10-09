@@ -1,9 +1,10 @@
 /**
  * [DEMO] Mock adapter: SIMULATES THE BACKEND for offline work.
  *
- * Everything that happens here (storing users, picking the view, resolving
- * the bottom bar, interpolating {{displayName}}) is done by the backend in
- * production, never by the client. Same rules as supabase/01-schema.sql.
+ * Everything that happens here (storing users, picking the view, hiding
+ * sections, resolving the bottom bar, interpolating {{displayName}}) is done by
+ * the backend in production, never by the client. Same rules as
+ * supabase/01-schema.sql.
  *
  * In-memory state on the Next server. Works locally; NOT reliable on Vercel
  * (each instance has its own memory). See docs/roadmap.md.
@@ -44,12 +45,15 @@ type MockDb = {
   initiativesEnabled?: Map<string, boolean>;
   /** Saved section order per view (D-74). Missing = the fixture order. */
   sectionOrder?: Map<VariantId, string[]>;
+  /** Saved hidden sections per view (D-78). Missing = the fixture's own `hidden` flags. */
+  hiddenSections?: Map<VariantId, string[]>;
 };
 
 const globalForMock = globalThis as unknown as { __bduiMockDb?: MockDb };
 const db: MockDb = (globalForMock.__bduiMockDb ??= { users: new Map() });
 const initiativesEnabled = (db.initiativesEnabled ??= new Map(initiatives.map(i => [i.id, i.enabledByDefault])));
 const sectionOrder = (db.sectionOrder ??= new Map<VariantId, string[]>());
+const hiddenSections = (db.hiddenSections ??= new Map<VariantId, string[]>());
 
 /* -------------------------------------------------------------------------- */
 /* Backend rules (D-08, D-64)                                                  */
@@ -77,16 +81,33 @@ function toSummary({ id, name, description, priority, audience }: InitiativeFixt
   return { id, name, description, priority, audience, enabled: initiativesEnabled.get(id) ?? false };
 }
 
-type StoredSection = { id: string };
+type StoredSection = { id: string; hidden?: boolean };
 
-/** Stored screen of a view with the saved section order applied (D-74). */
-function orderedScreen(variantId: VariantId): Record<string, unknown> {
+/** Copy of the section with the `hidden` flag set, or without the key when visible. */
+function withHidden(section: StoredSection, isHidden: boolean): StoredSection {
+  const copy = { ...section };
+  delete copy.hidden;
+  return isHidden ? { ...copy, hidden: true } : copy;
+}
+
+/** Stored screen (template) of a view with the saved order and visibility applied (D-74, D-78). */
+function storedScreen(variantId: VariantId): Record<string, unknown> {
   const base = screensByVariant[variantId];
   const order = sectionOrder.get(variantId);
-  if (!order) return base;
+  const hidden = hiddenSections.get(variantId);
+  if (!order && !hidden) return base;
 
-  const byId = new Map((base.sections as StoredSection[]).map(section => [section.id, section]));
-  return { ...base, sections: order.flatMap(id => byId.get(id) ?? []) };
+  const baseSections = base.sections as StoredSection[];
+  const byId = new Map(baseSections.map(section => [section.id, section]));
+  const ordered = order ? order.flatMap(id => byId.get(id) ?? []) : baseSections;
+  const sections = hidden ? ordered.map(section => withHidden(section, hidden.includes(section.id))) : ordered;
+  return { ...base, sections };
+}
+
+/** What the Home receives: no hidden sections and no `hidden` flag (D-78). */
+function withoutHiddenSections(screen: Record<string, unknown>): Record<string, unknown> {
+  const sections = (screen.sections as StoredSection[]).filter(section => !section.hidden).map(section => withHidden(section, false));
+  return { ...screen, sections };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -110,7 +131,7 @@ export const mockDataSource: DataSource = {
     // Users left in memory from the deprecated A–D presets fall back to the default view.
     const variantId = !user ? ANONYMOUS_VARIANT_ID : isVariantId(user.variantId) ? user.variantId : DEFAULT_VARIANT_ID;
     const winner = winningInitiative(variantId);
-    const base = orderedScreen(variantId);
+    const base = withoutHiddenSections(storedScreen(variantId));
     const screen = winner ? { ...base, bottomBar: winner.section } : base;
 
     // Personalization tokens, resolved by the backend (D-08, D-72).
@@ -153,21 +174,28 @@ export const mockDataSource: DataSource = {
   },
 
   async getVariantScreen(variantId) {
-    return isVariantId(variantId) ? orderedScreen(variantId) : null;
+    return isVariantId(variantId) ? storedScreen(variantId) : null;
   },
 
-  async reorderSections(variantId, sectionIds) {
+  async reorderSections(variantId, sectionIds, hiddenSectionIds) {
     if (!isVariantId(variantId)) throw new Error(`Unknown view: ${variantId}`);
 
-    // Same rule as the SQL function: exactly the view's sections, nothing missing, repeated or unknown.
-    const current = (orderedScreen(variantId).sections as StoredSection[]).map(section => section.id);
+    // Same rules as the SQL function: exactly the view's sections, nothing missing, repeated or unknown.
+    const current = storedScreen(variantId).sections as StoredSection[];
+    const currentIds = current.map(section => section.id);
     const isSameSet =
-      sectionIds.length === current.length &&
+      sectionIds.length === currentIds.length &&
       new Set(sectionIds).size === sectionIds.length &&
-      sectionIds.every(id => current.includes(id));
+      sectionIds.every(id => currentIds.includes(id));
     if (!isSameSet) throw new Error('The ids must be exactly the sections of the view');
 
+    // Omitted = keep the current visibility (D-78).
+    const hidden = hiddenSectionIds ?? current.filter(section => section.hidden).map(section => section.id);
+    const isValidHidden = new Set(hidden).size === hidden.length && hidden.every(id => sectionIds.includes(id));
+    if (!isValidHidden) throw new Error('The hidden ids must be sections of the view, without repeats');
+
     sectionOrder.set(variantId, [...sectionIds]);
-    return [...sectionIds];
+    hiddenSections.set(variantId, [...hidden]);
+    return { sectionIds: [...sectionIds], hiddenSectionIds: sectionIds.filter(id => hidden.includes(id)) };
   },
 };

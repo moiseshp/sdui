@@ -57,6 +57,14 @@ export interface RegisterUserResult {
   isNew: boolean;
 }
 
+/** Saved order and visibility of a view's sections (D-74, D-78). */
+export interface SectionLayoutResult {
+  /** Every section of the view, in order (hidden ones included). */
+  sectionIds: string[];
+  /** The hidden ones, in the same order. The Home never receives them. */
+  hiddenSectionIds: string[];
+}
+
 /**
  * What every backend must implement.
  *
@@ -68,9 +76,9 @@ export interface DataSource {
   /** Creates the user if missing. If it exists, returns it without touching displayName. */
   upsertUser(input: { id: string; displayName: string }): Promise<RegisterUserResult>;
   /**
-   * Returns the screen ALREADY resolved: the view, the winning bottom bar (if
-   * any) and {{displayName}} interpolated. Not validated: the client validates
-   * it with `parseScreen`.
+   * Returns the screen ALREADY resolved: the view without its hidden sections
+   * (D-78), the winning bottom bar (if any) and {{displayName}} interpolated.
+   * Not validated: the client validates it with `parseScreen`.
    * No session (`null`) or unknown user → the anonymous view (D-69). It never
    * returns `null`: the Home is public.
    */
@@ -83,15 +91,18 @@ export interface DataSource {
   listInitiatives(): Promise<InitiativeSummary[]>;
   setInitiativeEnabled(initiativeId: string, enabled: boolean): Promise<InitiativeSummary>;
   /**
-   * Stored screen of a view, as a TEMPLATE: tokens are not interpolated and
-   * there is no bottom bar. Used by the section order editor (D-74).
+   * Stored screen of a view, as a TEMPLATE: tokens are not interpolated,
+   * there is no bottom bar and hidden sections are included with
+   * `hidden: true` (D-78). Used by the section editor (D-74).
    * Unknown view → `null`.
    */
   getVariantScreen(variantId: VariantId): Promise<unknown | null>;
   /**
-   * Reorders `screen.sections` of a view (D-74). Only the section ids travel,
-   * never content: the backend rejects any list that is not exactly the
-   * sections the view already has. Returns the saved order.
+   * Saves the order and the visibility of a view's `screen.sections`
+   * (D-74, D-78). Only ids travel, never content: the backend rejects any
+   * order that is not exactly the sections the view already has, and any
+   * hidden id that is not one of them.
+   * `hiddenSectionIds` omitted = keep the current visibility.
    */
-  reorderSections(variantId: VariantId, sectionIds: string[]): Promise<string[]>;
+  reorderSections(variantId: VariantId, sectionIds: string[], hiddenSectionIds?: string[]): Promise<SectionLayoutResult>;
 }

@@ -12,7 +12,7 @@ import { supabaseDataSource } from './adapters/supabase';
 import { sanitizeName } from './sanitize';
 import type { DataSource, VariantId } from './types';
 
-export type { DemoUser, InitiativeSummary, RegisterUserResult, VariantId, VariantSummary } from './types';
+export type { DemoUser, InitiativeSummary, RegisterUserResult, SectionLayoutResult, VariantId, VariantSummary } from './types';
 export { ANONYMOUS_VARIANT_ID, DEFAULT_VARIANT_ID, VARIANT_IDS, isVariantId } from './types';
 export { InvalidNameError } from './sanitize';
 
@@ -59,12 +59,15 @@ export function setInitiativeEnabled(initiativeId: string, enabled: boolean) {
   return getDataSource().setInitiativeEnabled(initiativeId, enabled);
 }
 
-/** Stored screen of a view (template: tokens not interpolated, no bottom bar). `null` if it does not exist. */
+/** Stored screen of a view (template: tokens not interpolated, no bottom bar, hidden sections flagged). `null` if it does not exist. */
 export function getVariantScreen(variantId: VariantId) {
   return getDataSource().getVariantScreen(variantId);
 }
 
-/** Saves the section order of a view. Only ids travel; the backend validates them (D-74). */
-export function reorderSections(variantId: VariantId, sectionIds: string[]) {
-  return getDataSource().reorderSections(variantId, sectionIds);
+/**
+ * Saves the section order and visibility of a view (D-74, D-78). Only ids travel;
+ * the backend validates them. `hiddenSectionIds` omitted = keep the current visibility.
+ */
+export function reorderSections(variantId: VariantId, sectionIds: string[], hiddenSectionIds?: string[]) {
+  return getDataSource().reorderSections(variantId, sectionIds, hiddenSectionIds);
 }

@@ -3,8 +3,8 @@
 import { useState, useTransition } from 'react';
 
 import type { InitiativeSummary } from '@/lib/data';
-import { cn } from '@/packages/utils/cn';
 import { setInitiativeEnabledAction } from './actions';
+import { Switch } from './switch';
 
 interface InitiativeToggleProps {
   initiative: InitiativeSummary;
@@ -37,25 +37,12 @@ export function InitiativeToggle({ initiative, audienceLabel }: InitiativeToggle
           <p className="text-sm text-muted-foreground">{description}</p>
           <p className="mt-1 text-xs font-medium text-muted-foreground">Para: {audienceLabel}</p>
         </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={enabled}
+        <Switch
+          checked={enabled}
+          onCheckedChange={() => handleToggle()}
           aria-label={`${enabled ? 'Apagar' : 'Prender'} ${name}`}
           disabled={isPending}
-          onClick={handleToggle}
-          className={cn(
-            'relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:opacity-60',
-            enabled ? 'bg-primary' : 'bg-neutral-300',
-          )}
-        >
-          <span
-            className={cn(
-              'absolute top-1 left-1 size-5 rounded-full bg-white shadow transition-transform',
-              enabled && 'translate-x-5',
-            )}
-          />
-        </button>
+        />
       </div>
       <p aria-live="polite" className="mt-2 min-h-5 text-sm text-muted-foreground">
         {isPending ? 'Guardando…' : saved ? `Listo: ${enabled ? 'prendida' : 'apagada'}. Pide a la sala que recargue.` : ''}

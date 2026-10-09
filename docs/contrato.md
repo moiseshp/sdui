@@ -54,6 +54,8 @@ Implementado en `packages/bdui/schema/screen.ts` (`ScreenSchema`, `ScreenLayoutS
 
 **Section** (sin cambios respecto al scaffold): `{ id, type, version, actions?, props? }`.
 
+**Secciones ocultas (D-78).** En la **plantilla guardada** de una vista (la que devuelve `getVariantScreen`, no el payload de la Home), una sección del cuerpo puede llevar `hidden: true`. Es un dato de almacenamiento del backend, no del contrato que recibe el cliente: `getHomeScreen` quita esas secciones y el flag antes de responder, así que el cliente nunca decide qué se oculta y el envelope `Section` no cambia. Una sección oculta conserva su posición en `sections`. Solo aplica al cuerpo: `header` y `bottomBar` no se ocultan. Un fixture puede arrancar con una sección oculta escribiendo `"hidden": true`.
+
 ## 2. Catálogo de secciones
 
 ### Existentes (se mantienen)
@@ -134,19 +136,23 @@ Las vistas solo usan estas operaciones. Cada adaptador (`mock`, `supabase`, futu
 | `assignVariant` | `userId, variantId` | usuario actualizado | `/configuracion` |
 | `listInitiatives` | — | `{ id, name, description, priority, audience, enabled }[]` | `/configuracion` |
 | `setInitiativeEnabled` | `initiativeId, enabled` | iniciativa actualizada | `/configuracion` |
-| `getVariantScreen` | `variantId` | `screen` guardado de la vista, como **plantilla** (sin interpolar y sin `bottomBar`); `null` si no existe | `/configuracion/[vista]` |
-| `reorderSections` | `variantId, sectionIds[]` | `sectionIds[]` guardados | `/configuracion/[vista]` |
+| `getVariantScreen` | `variantId` | `screen` guardado de la vista, como **plantilla** (sin interpolar, sin `bottomBar` y con las secciones ocultas marcadas `hidden: true`); `null` si no existe | `/configuracion/[vista]` |
+| `reorderSections` | `variantId, sectionIds[], hiddenSectionIds[]?` | `{ sectionIds, hiddenSectionIds }` guardados | `/configuracion/[vista]` |
 
 Reglas:
 
 - `registerUser`: si el `id` sanitizado ya existe, **no crea** otro; devuelve el existente con `isNew: false` y **no** sobrescribe `displayName` (gana el primero).
 - Usuario nuevo → `variantId: "logged"`: al registrarse, el backend le asigna la vista Logeado (D-69). Desde ahí, las demás vistas se asignan por configuración en el panel.
-- `getHomeScreen`: la Home es **pública** (D-69). Sin sesión (`null`) o con un usuario desconocido, devuelve la vista anónima `guest`. Con usuario, la vista que tiene asignada. Luego le agrega `bottomBar` según §4.1 y, si hay usuario, reemplaza los tokens `{{displayName}}` y `{{firstName}}` en todos los strings (§2). Nunca devuelve `null`. Devuelve el payload **sin validar**: el cliente valida con `parseScreen`.
+- `getHomeScreen`: la Home es **pública** (D-69). Sin sesión (`null`) o con un usuario desconocido, devuelve la vista anónima `guest`. Con usuario, la vista que tiene asignada. Le quita las secciones ocultas y el flag `hidden` (D-78), le agrega `bottomBar` según §4.1 y, si hay usuario, reemplaza los tokens `{{displayName}}` y `{{firstName}}` en todos los strings (§2). Nunca devuelve `null`. Devuelve el payload **sin validar**: el cliente valida con `parseScreen`.
 - `listUsers`: ordenados por llegada (`createdAt` ascendente).
 - `variantId` válidos: `guest`, `logged`, `loyalty`, `christmas`, `heavy`, `birthday` (D-62).
 - `listInitiatives`: ordenadas por prioridad (1 primero). `audience: null` = todas las vistas.
-- `getVariantScreen`: devuelve el `screen` guardado **tal cual** (plantilla): conserva los tokens `{{…}}` y no agrega `bottomBar`. Sirve para que el panel muestre el orden actual.
-- `reorderSections` (D-74): recibe **solo los ids** de las secciones en el nuevo orden, nunca contenido. El backend exige que sean **exactamente** las secciones de la vista (ninguna de menos, repetida ni desconocida; vacío o nulo se rechazan) y reordena `screen.sections`. No toca `header`, `theme`, `layout` ni el contenido de las secciones, y `bottomBar` no se guarda en `screen` (§4.1). Aplica a **la vista**, o sea a todas las personas que la tengan asignada. Re-sembrar (`02-seed.sql`) sobrescribe `screen` y restablece el orden de los fixtures.
+- `getVariantScreen`: devuelve el `screen` guardado **tal cual** (plantilla): conserva los tokens `{{…}}`, no agrega `bottomBar` e incluye las secciones ocultas con `hidden: true`. Sirve para que el panel muestre el orden y la visibilidad actuales.
+- `reorderSections` (D-74, D-78): guarda el **orden y la visibilidad** de las secciones del cuerpo en una sola operación. Recibe **solo ids**, nunca contenido:
+  - `sectionIds`: todas las secciones de la vista en el nuevo orden, ocultas incluidas. El backend exige que sean **exactamente** las secciones de la vista (ninguna de menos, repetida ni desconocida; vacío o nulo se rechazan) y reordena `screen.sections`.
+  - `hiddenSectionIds` (opcional): las secciones que quedan ocultas; el resto queda visible. Debe ser un subconjunto de `sectionIds`, sin repetidos. **Si se omite, la visibilidad no cambia**: un cliente que solo reordena nunca vuelve a mostrar nada por accidente.
+  - No toca `header`, `theme`, `layout` ni el contenido de las secciones, y `bottomBar` no se guarda en `screen` (§4.1). Aplica a **la vista**, o sea a todas las personas que la tengan asignada. Re-sembrar (`02-seed.sql`) sobrescribe `screen` y restablece el orden y la visibilidad de los fixtures.
+  - El nombre se conserva por compatibilidad con D-74, aunque ahora también guarda la visibilidad.
 - La asignación masiva del panel («Todos a …») se arma con `assignVariant`; no es una operación del contrato (D-45, D-59, D-66).
 
 ### 4.1 Bottom bar: iniciativas como feature flags (D-64)
@@ -210,7 +216,7 @@ variants                                   -- vistas; seed generado desde contra
   id            text  PK  check ^[a-z][a-z0-9-]*$   -- 'guest' | 'logged' | 'loyalty' | ...
   name          text  not null
   description   text  not null
-  screen        jsonb not null              -- Screen v1.2 con tokens {{firstName}}/{{displayName}}, sin bottomBar
+  screen        jsonb not null              -- Screen v1.2 con tokens {{firstName}}/{{displayName}}, sin bottomBar; secciones ocultas con hidden: true (D-78)
 
 demo_users
   id            text  PK  check ^[a-z0-9]+(-[a-z0-9]+)*$   -- sanitizado
@@ -233,13 +239,13 @@ Seguridad: las tres tablas con RLS activo **sin políticas** y sin permisos para
 | Operación | RPC | Notas |
 |-----------|-----|-------|
 | `registerUser` | `upsert_user(p_id, p_display_name)` | `on conflict do nothing`; `isNew` según si insertó. |
-| `getHomeScreen` | `get_home_screen(p_user_id)` | Vista (`guest` si `p_user_id` es nulo o desconocido) + `bottomBar` ganadora (§4.1) + interpolación de `{{displayName}}` y `{{firstName}}` escapados como string JSON. Nunca `null`. |
+| `getHomeScreen` | `get_home_screen(p_user_id)` | Vista (`guest` si `p_user_id` es nulo o desconocido) sin sus secciones ocultas + `bottomBar` ganadora (§4.1) + interpolación de `{{displayName}}` y `{{firstName}}` escapados como string JSON. Nunca `null`. |
 | `listUsers` | `list_users()` | Orden por `created_at`. |
 | `listVariants` | `list_variants()` | Solo metadatos (sin `screen`), en el orden de `variants.json`. |
 | `assignVariant` | `assign_variant(p_user_id, p_variant_id)` | Vista inexistente → error de FK. Usuario inexistente → error `P0002`. |
 | `listInitiatives` | `list_initiatives()` | Sin `section`. Orden por prioridad. |
 | `setInitiativeEnabled` | `set_initiative_enabled(p_initiative_id, p_enabled)` | Iniciativa inexistente → error `P0002`. |
-| `getVariantScreen` | `get_variant_screen(p_variant_id)` | Devuelve `variants.screen` tal cual (plantilla). `null` si la vista no existe. |
-| `reorderSections` | `reorder_sections(p_variant_id, p_section_ids)` | Valida que los ids sean exactamente las secciones de la vista (error `22023` si no) y reordena `screen.sections` con `jsonb_set`. Vista inexistente → error `P0002`. Devuelve los ids guardados. |
+| `getVariantScreen` | `get_variant_screen(p_variant_id)` | Devuelve `variants.screen` tal cual (plantilla, con `hidden: true` en las ocultas). `null` si la vista no existe. |
+| `reorderSections` | `reorder_sections(p_variant_id, p_section_ids, p_hidden_section_ids default null)` | Valida que los ids sean exactamente las secciones de la vista y que los ocultos sean un subconjunto sin repetidos (error `22023` si no). Reordena `screen.sections` con `jsonb_set` y pone o quita `hidden: true`; con `p_hidden_section_ids` nulo conserva la visibilidad. Vista inexistente → error `P0002`. Devuelve `{ sectionIds, hiddenSectionIds }`. |
 
 Las respuestas ya vienen en camelCase con la forma de `lib/data/types.ts`. Cada RPC es un endpoint REST (`POST /rest/v1/rpc/<nombre>`), consumible desde cualquier plataforma.

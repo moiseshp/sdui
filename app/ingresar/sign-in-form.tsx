@@ -3,8 +3,8 @@
 import { useActionState } from 'react';
 
 import { Button } from '@/packages/ui/button';
-import { Input } from '@/packages/ui/input';
 import { signInAction, type SignInState } from './actions';
+import { Input } from './input';
 
 const initialState: SignInState = { error: null, name: '' };
 

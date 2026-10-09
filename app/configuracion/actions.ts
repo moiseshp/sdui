@@ -28,11 +28,14 @@ export async function setInitiativeEnabledAction(initiativeId: string, enabled: 
 }
 
 /**
- * Saves the new section order of a view (D-74). Only the ids travel: the
- * backend rejects any list that is not exactly the view's sections.
+ * Saves the order and visibility of a view's sections (D-74, D-78). Only ids
+ * travel: the backend rejects any order that is not exactly the view's sections
+ * and any hidden id that is not one of them. `hiddenSectionIds` omitted = keep
+ * the current visibility. Returns what the backend saved.
  */
-export async function reorderSectionsAction(variantId: string, sectionIds: string[]) {
+export async function reorderSectionsAction(variantId: string, sectionIds: string[], hiddenSectionIds?: string[]) {
   if (!isVariantId(variantId)) throw new Error(`Invalid view: ${variantId}`);
-  await reorderSections(variantId, sectionIds);
+  const result = await reorderSections(variantId, sectionIds, hiddenSectionIds);
   refresh();
+  return result;
 }

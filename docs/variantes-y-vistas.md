@@ -47,17 +47,17 @@ Momento sugerido en la presentación: con la sala repartida en varias vistas, pr
 - Implementado en `app/(home)/page.tsx`.
 
 ### `/ingresar`
-- Cabecera roja KFC con logo y "¡Bienvenido!", un input "Tu nombre" y un botón "Ingresar" (`packages/ui/input.tsx`, `button.tsx`).
+- Cabecera roja KFC con logo y "¡Bienvenido!", un input "Tu nombre" y un botón "Ingresar" (`app/ingresar/input.tsx`, `packages/ui/button.tsx`).
 - Texto de ayuda: *"Si alguien más tiene tu nombre, agrega tu apellido."* Si el nombre es inválido, el mismo espacio muestra el error.
 - Al enviar (Server Action): `registerUser(name)` → guarda el `id` en la cookie de sesión → navega a `/`. Como el backend asigna `logged` al registrarse, la persona ve el cambio de Home al instante (D-69).
 - Se llega desde la Home: CTA «Registrarme» de la bottom bar u «Oferta de la semana» (D-70). Tiene un enlace «Volver al inicio».
 - **Siempre** muestra el formulario, aunque haya sesión: así alguien puede volver a ingresar con otro nombre (D-48).
-- Implementado en `app/ingresar/` (`page.tsx`, `sign-in-form.tsx`, `actions.ts` con `signInAction`).
+- Implementado en `app/ingresar/` (`page.tsx`, `sign-in-form.tsx`, `input.tsx`, `actions.ts` con `signInAction`).
 
 ### `/configuracion`
 Panel del presentador, **de escritorio** (D-75): lo opera solo el presentador; el público únicamente mira los cambios en sus dispositivos.
 - **No** requiere sesión ni redirige a `/ingresar`. No tiene protección: simplemente no se comparte la URL.
-- Leyenda de vistas arriba (emoji con color, nombre y descripción) para guiar la explicación. Cada vista es un enlace a su editor de orden (`/configuracion/[vista]`, abajo).
+- Leyenda de vistas arriba (emoji con color, nombre y descripción) para guiar la explicación. Cada vista es un enlace a su editor de secciones (`/configuracion/[vista]`, abajo).
 - Una **tarjeta por persona** (no tabla): círculo con el emoji de la vista actual, `displayName`, `id` y un `<select>` nativo para cambiarla (`assignVariant`). Tras guardar muestra "Listo. Pídele a {nombre} que recargue".
 - **Asignar a todos**, debajo de la leyenda: un botón «Todos a …» por vista, con su color (D-66). «Todos a Logeado» hace de **rollback**. Se arman con `assignVariant` (`assignAllAction`); no son una operación nueva.
 - La lista de personas solo muestra a quienes se registraron: quien navega sin sesión ve `guest` y no aparece en el panel.
@@ -67,19 +67,21 @@ Panel del presentador, **de escritorio** (D-75): lo opera solo el presentador; e
 - Estado vacío con instrucciones.
 - **Sin caché** (`connection()`).
 - No incluye borrado de usuarios (el presentador limpia los datos a mano en el backend).
-- Implementado en `app/configuracion/` (`page.tsx`, `actions.ts`, `bulk-assign.tsx`, `initiative-toggle.tsx`, `refresh-button.tsx`, `variant-select.tsx`, `variant-styles.ts`).
+- Implementado en `app/configuracion/` (`page.tsx`, `actions.ts`, `bulk-assign.tsx`, `initiative-toggle.tsx`, `refresh-button.tsx`, `switch.tsx`, `variant-select.tsx`, `variant-styles.ts`). `switch.tsx` es el interruptor único del panel: lo usan las iniciativas y el editor de secciones (D-79).
 
-### `/configuracion/[vista]` (orden de secciones, D-74)
-Editor de escritorio para reordenar las secciones de **una vista** (`guest`, `logged`, `loyalty`, `christmas`, `heavy`, `birthday`). Se entra tocando la vista en la leyenda del panel.
-- Lee `getVariantScreen(vista)` y muestra una **tarjeta por sección**: nombre en lenguaje de negocio («Banner principal», «Carrusel de productos», «Barra de anuncio», «Cupón», «Tarjeta de puntos…»), su título como resumen, miniatura si tiene imagen y número de posición. Nunca JSON.
-- El **header** (arriba) y la **bottom bar** (abajo) aparecen como filas bloqueadas: no se reordenan. La bottom bar la decide una iniciativa y no se guarda en `screen`.
-- Se reordena con **arrastrar y soltar** nativo del navegador (sin dependencias, D-76). Un solo botón **«Guardar orden»**, activo solo si el orden cambió; no hay «descartar» (D-75).
-- Al guardar llama `reorderSections(vista, ids)`: solo viajan los ids; el backend valida y reordena `screen.sections`. Aviso: «Guardado. Quien tenga esta vista verá el nuevo orden al recargar.»
+### `/configuracion/[vista]` (orden y visibilidad de secciones, D-74, D-78)
+Editor de escritorio para reordenar, ocultar y mostrar las secciones de **una vista** (`guest`, `logged`, `loyalty`, `christmas`, `heavy`, `birthday`). Se entra tocando la vista en la leyenda del panel.
+- Lee `getVariantScreen(vista)` y muestra una **tarjeta por sección**: nombre en lenguaje de negocio («Banner principal», «Carrusel de productos», «Barra de anuncio», «Cupón», «Tarjeta de puntos…»), su título como resumen, miniatura si tiene imagen, número de posición y un **interruptor de visibilidad**. Nunca JSON.
+- El **header** (arriba) y la **bottom bar** (abajo) aparecen como filas bloqueadas: no se reordenan ni se ocultan. La bottom bar la decide una iniciativa y no se guarda en `screen`.
+- **Ocultar / mostrar** (D-78): el interruptor de cada fila **solo cambia el borrador**, igual que arrastrar. Una sección oculta se ve atenuada con la etiqueta «Oculta», conserva su posición y se puede seguir arrastrando.
+- Se reordena con **arrastrar y soltar** nativo del navegador (sin dependencias, D-76).
+- Un solo botón **«Guardar cambios»**, activo solo si cambió el orden o la visibilidad. Mientras tanto se lee «Cambios sin guardar: orden y visibilidad» (o solo uno de los dos), para que el presentador explique cada paso antes de aplicarlo. No hay «descartar» (D-75).
+- Al guardar llama **una vez** a `reorderSections(vista, ids, ocultos)`: solo viajan ids; el backend valida, reordena `screen.sections` y marca las ocultas. Aviso: «Guardado. Quien tenga esta vista verá los cambios al recargar.»
 - Es el layout de la **vista**, no de una persona: aplica a todas las que la tengan asignada.
-- Solo reordena: no agrega, quita ni edita secciones.
-- **Restablecer** = re-sembrar (`npm run db:seed` + `supabase/02-seed.sql`). `03-cleanup.sql` no restablece el orden.
+- Solo reordena, oculta y muestra: no agrega, quita ni edita secciones.
+- **Restablecer** = re-sembrar (`npm run db:seed` + `supabase/02-seed.sql`), que devuelve el orden y la visibilidad de los fixtures. `03-cleanup.sql` no los restablece.
 - Sin caché (`connection()`).
-- Implementado en `app/configuracion/[variantId]/` (`page.tsx`, `section-order-editor.tsx`, `section-labels.ts`); la acción es `reorderSectionsAction`, en `app/configuracion/actions.ts`.
+- Implementado en `app/configuracion/[variantId]/` (`page.tsx`, `section-order-editor.tsx`, `section-labels.ts`); la acción es `reorderSectionsAction`, en `app/configuracion/actions.ts`. El interruptor es `app/configuracion/switch.tsx` (D-79).
 
 ## Sesión `[DEMO]`
 

@@ -6,9 +6,9 @@
 -- Idempotent: safe to run again (also upgrades a database created with the
 -- A–D presets).
 --
--- Design (docs/contrato.md §4 and §6, docs/decisiones.md D-23, D-49, D-62–D-66):
+-- Design (docs/contrato.md §4 and §6, docs/decisiones.md D-23, D-49, D-62–D-66, D-74, D-78):
 --   · Tables are CLOSED: nobody reads or writes them directly with the public key.
---   · The 7 contract operations are 7 RPC functions. That is all the public key
+--   · The 9 contract operations are 9 RPC functions. That is all the public key
 --     can call. Each one is exposed as a REST endpoint:
 --       POST /rest/v1/rpc/<function_name>
 --     so Swift, Android or .NET consume them exactly like the web does.
@@ -129,6 +129,9 @@ $$;
 --   · No session (p_user_id null) or unknown user → anonymous view 'guest'.
 --   · Registered user → the view assigned to them (starts on 'logged').
 -- Then:
+--   0. Drops the sections hidden from the panel (`hidden: true`, D-78). The
+--      payload never carries hidden sections nor the `hidden` flag: the client
+--      doesn't decide what to show.
 --   1. Adds `bottomBar` with the enabled initiative of highest priority whose
 --      audience includes that view (D-64). No winner → no `bottomBar`.
 --   2. If there is a user, interpolates the personalization tokens in the whole
@@ -157,11 +160,23 @@ as $$
       vw.display_name,
       vw.first_name,
       case
-        when w.section is null then v.screen
-        else v.screen || jsonb_build_object('bottomBar', w.section)
+        when w.section is null then vs.screen
+        else vs.screen || jsonb_build_object('bottomBar', w.section)
       end as screen
     from viewer vw
     join public.variants v on v.id = vw.variant_id
+    cross join lateral (
+      select jsonb_set(
+               v.screen,
+               '{sections}',
+               coalesce(
+                 (select jsonb_agg(t.s - 'hidden' order by t.ord)
+                    from jsonb_array_elements(coalesce(v.screen -> 'sections', '[]'::jsonb)) with ordinality as t(s, ord)
+                   where coalesce((t.s ->> 'hidden')::boolean, false) = false),
+                 '[]'::jsonb
+               )
+             ) as screen
+    ) vs
     left join lateral (
       select i.section
       from public.initiatives i
@@ -325,8 +340,8 @@ $$;
 
 -- getVariantScreen → get_variant_screen
 -- Returns the stored screen of a view as a TEMPLATE: {{tokens}} are not
--- interpolated and there is no bottomBar. Used by the section order editor
--- (D-74). Unknown view → null.
+-- interpolated, there is no bottomBar and hidden sections are included with
+-- `hidden: true` (D-78). Used by the section editor (D-74). Unknown view → null.
 create or replace function public.get_variant_screen(p_variant_id text)
 returns jsonb
 language sql
@@ -338,12 +353,29 @@ as $$
 $$;
 
 -- reorderSections → reorder_sections
--- Reorders screen.sections of a view (D-74). It receives ONLY the section ids in
--- the new order: the backend checks that they are exactly the sections the view
--- already has (nothing missing, repeated or unknown) and rebuilds the array.
--- Content never travels from the client (D-24). Returns the saved order.
--- Note: 02-seed.sql overwrites `screen`, so re-seeding restores the fixture order.
-create or replace function public.reorder_sections(p_variant_id text, p_section_ids text[])
+-- Saves the order AND the visibility of screen.sections of a view (D-74, D-78).
+-- It receives ONLY ids, never content (D-24):
+--   · p_section_ids: every section of the view, in the new order. The backend
+--     checks that they are exactly the sections the view already has (nothing
+--     missing, repeated or unknown) and rebuilds the array.
+--   · p_hidden_section_ids (optional): the sections to hide; the rest become
+--     visible. Must be a subset of p_section_ids, without repeats. NULL (or
+--     omitted) = keep the current visibility, so a caller that only reorders
+--     never un-hides anything.
+-- Hidden sections keep their position: showing them again puts them back there.
+-- Returns { sectionIds, hiddenSectionIds } as saved.
+-- Note: 02-seed.sql overwrites `screen`, so re-seeding restores the fixture
+-- order and visibility.
+
+-- The signature changed in D-78 (new optional parameter): drop the old one so
+-- PostgREST never sees two overloads.
+drop function if exists public.reorder_sections(text, text[]);
+
+create or replace function public.reorder_sections(
+  p_variant_id         text,
+  p_section_ids        text[],
+  p_hidden_section_ids text[] default null
+)
 returns json
 language plpgsql
 security definer
@@ -352,6 +384,7 @@ as $$
 declare
   v_sections jsonb;
   v_current  text[];
+  v_hidden   text[];
   v_new      jsonb;
 begin
   select screen -> 'sections' into v_sections
@@ -374,7 +407,31 @@ begin
     raise exception 'The ids must be exactly the sections of the view' using errcode = '22023';
   end if;
 
-  select coalesce(jsonb_agg(t.s order by o.ord), '[]'::jsonb)
+  if p_hidden_section_ids is null then
+    -- Keep the current visibility.
+    select coalesce(array_agg(s ->> 'id'), '{}')
+      into v_hidden
+      from jsonb_array_elements(coalesce(v_sections, '[]'::jsonb)) as t(s)
+     where coalesce((s ->> 'hidden')::boolean, false);
+  else
+    if (select count(distinct x) from unnest(p_hidden_section_ids) as x) <> cardinality(p_hidden_section_ids)
+       or exists (select 1 from unnest(p_hidden_section_ids) as x where x is null or x <> all (p_section_ids)) then
+      raise exception 'The hidden ids must be sections of the view, without repeats' using errcode = '22023';
+    end if;
+    v_hidden := p_hidden_section_ids;
+  end if;
+
+  -- Rebuild in the new order. Visible sections never keep a `hidden` key.
+  select coalesce(
+           jsonb_agg(
+             case
+               when o.id = any (v_hidden) then (t.s - 'hidden') || '{"hidden": true}'::jsonb
+               else t.s - 'hidden'
+             end
+             order by o.ord
+           ),
+           '[]'::jsonb
+         )
     into v_new
     from unnest(p_section_ids) with ordinality as o(id, ord)
     join jsonb_array_elements(v_sections) as t(s) on t.s ->> 'id' = o.id;
@@ -383,7 +440,16 @@ begin
      set screen = jsonb_set(screen, '{sections}', v_new)
    where id = p_variant_id;
 
-  return to_json(p_section_ids);
+  return json_build_object(
+    'sectionIds',       to_json(p_section_ids),
+    'hiddenSectionIds', to_json(coalesce(
+                          array(select o.id
+                                  from unnest(p_section_ids) with ordinality as o(id, ord)
+                                 where o.id = any (v_hidden)
+                                 order by o.ord),
+                          '{}'::text[]
+                        ))
+  );
 end;
 $$;
 
@@ -400,7 +466,7 @@ revoke execute on function public.assign_variant(text, text)              from p
 revoke execute on function public.list_initiatives()                      from public;
 revoke execute on function public.set_initiative_enabled(text, boolean)   from public;
 revoke execute on function public.get_variant_screen(text)                from public;
-revoke execute on function public.reorder_sections(text, text[])          from public;
+revoke execute on function public.reorder_sections(text, text[], text[])  from public;
 
 grant execute on function public.upsert_user(text, text)                  to anon, authenticated, service_role;
 grant execute on function public.get_home_screen(text)                    to anon, authenticated, service_role;
@@ -410,4 +476,4 @@ grant execute on function public.assign_variant(text, text)               to ano
 grant execute on function public.list_initiatives()                       to anon, authenticated, service_role;
 grant execute on function public.set_initiative_enabled(text, boolean)    to anon, authenticated, service_role;
 grant execute on function public.get_variant_screen(text)                 to anon, authenticated, service_role;
-grant execute on function public.reorder_sections(text, text[])           to anon, authenticated, service_role;
+grant execute on function public.reorder_sections(text, text[], text[])   to anon, authenticated, service_role;

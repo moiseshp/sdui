@@ -2,7 +2,11 @@ import * as React from 'react';
 
 import { cn } from '@/packages/utils/cn';
 
-/** Base input. `text-base` prevents iOS from auto-zooming on focus. */
+/**
+ * [DEMO] Base input of the sign-in form. Sign-in is not rendered by BDUI, so it
+ * lives here and not in `packages/` (D-79). `text-base` prevents iOS from
+ * auto-zooming on focus.
+ */
 function Input({ className, ...props }: React.ComponentProps<'input'>) {
   return (
     <input

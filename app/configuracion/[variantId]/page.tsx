@@ -9,13 +9,27 @@ import { describeHeader, describeSection } from './section-labels';
 import { SectionOrderEditor } from './section-order-editor';
 
 export const metadata: Metadata = {
-  title: 'Orden de secciones · KFC',
+  title: 'Secciones de la vista · KFC',
 };
 
 /**
- * Section order editor for one view (docs/variantes-y-vistas.md → /configuracion/[vista]).
- * Desktop-only, presenter-only (D-75). Reordering changes the layout of the VIEW,
- * so it applies to everyone who has that view assigned, not to one person.
+ * Ids of the sections flagged `hidden: true` in the stored template (D-78).
+ * Read from the raw template because `parseScreen` drops unknown keys: `hidden`
+ * is a backend storage flag, not part of the Screen the Home receives.
+ */
+function readHiddenSectionIds(rawScreen: unknown): string[] {
+  const sections = (rawScreen as { sections?: unknown })?.sections;
+  if (!Array.isArray(sections)) return [];
+  return sections.flatMap(section => {
+    const { id, hidden } = (section ?? {}) as { id?: unknown; hidden?: unknown };
+    return hidden === true && typeof id === 'string' ? [id] : [];
+  });
+}
+
+/**
+ * Section editor for one view (docs/variantes-y-vistas.md → /configuracion/[vista]):
+ * order (D-74) and visibility (D-78). Desktop-only, presenter-only (D-75).
+ * Changes apply to the VIEW, so to everyone who has it assigned, not to one person.
  */
 export default async function SectionOrderPage({ params }: { params: Promise<{ variantId: string }> }) {
   // No cache: always show the order currently stored (D-19).
@@ -38,11 +52,11 @@ export default async function SectionOrderPage({ params }: { params: Promise<{ v
         </Link>
 
         <header className="mt-3">
-          <p className="text-xs font-bold uppercase tracking-widest text-primary">Orden de secciones</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-primary">Secciones de la vista</p>
           <h1 className="mt-1 text-2xl font-black tracking-tight">{variant?.name ?? variantId}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Arrastra las secciones para cambiar el orden en que llegan en esta vista. El cambio aplica a todas las personas que
-            la tengan asignada.
+            Arrastra las secciones para cambiar el orden en que llegan en esta vista, o usa el interruptor para ocultarlas o
+            mostrarlas. Los cambios aplican a todas las personas que la tengan asignada.
           </p>
         </header>
 
@@ -50,6 +64,7 @@ export default async function SectionOrderPage({ params }: { params: Promise<{ v
           variantId={variantId}
           header={screen.header ? describeHeader(screen.header) : null}
           sections={screen.sections.map(section => describeSection(section))}
+          hiddenSectionIds={readHiddenSectionIds(rawScreen)}
         />
       </main>
     </div>

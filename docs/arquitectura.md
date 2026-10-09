@@ -11,7 +11,7 @@ Este proyecto mezcla dos capas que **no deben confundirse**:
 
 ## Principios `[ARQ]`
 
-1. **El cliente no decide qué mostrar.** El backend resuelve *usuario → vista → screen (+ bottom bar)* y entrega una pantalla lista para renderizar. El cliente solo mapea `type` → componente.
+1. **El cliente no decide qué mostrar.** El backend resuelve *usuario → vista → screen (+ bottom bar)* y entrega una pantalla lista para renderizar, sin las secciones ocultas (D-78). El cliente solo mapea `type` → componente.
 2. **Personalización resuelta en backend.** Textos personalizados (p. ej. "¡Hola, Moisés!") llegan ya interpolados. El cliente nunca arma strings con datos del usuario. Tampoco decide qué ve quien no tiene sesión: la Home es pública y el backend responde la vista anónima (D-69).
 3. **Cada carga de pantalla pide el screen de nuevo.** Sin caché del screen. Recargar (web) o volver a montar la pantalla (nativo) = nueva petición. Es el mecanismo que hace visibles los cambios del panel.
 4. **Contract First.** El contrato (forma del Screen + operaciones de datos) se define antes que el backend. El frontend se desarrolla contra mocks que cumplen el contrato; cambiar al backend real no toca las vistas.
@@ -32,6 +32,7 @@ Cliente (web / app / kiosko)
 Backend
    │  sin sesión o usuario desconocido → vista anónima (guest)
    │  con usuario → la vista asignada (al registrarse: logged)
+   │  quita las secciones ocultas desde el panel (D-78)
    │  agrega bottomBar con la iniciativa prendida de mayor prioridad para esa vista
    │  interpola {{displayName}} en todo el screen
    ▼
@@ -40,7 +41,7 @@ Screen JSON (contrato v1.2)
 Cliente: valida → ScreenRenderer → tema + header slot + layout + secciones + bottom bar
 ```
 
-Panel (`/configuracion`): `listUsers()`, `listVariants()`, `assignVariant(userId, variantId)`, `listInitiatives()`, `setInitiativeEnabled(initiativeId, enabled)`. Editor de orden (`/configuracion/[vista]`): `getVariantScreen(variantId)`, `reorderSections(variantId, sectionIds)` (D-74).
+Panel (`/configuracion`): `listUsers()`, `listVariants()`, `assignVariant(userId, variantId)`, `listInitiatives()`, `setInitiativeEnabled(initiativeId, enabled)`. Editor de secciones (`/configuracion/[vista]`): `getVariantScreen(variantId)`, `reorderSections(variantId, sectionIds, hiddenSectionIds?)` — orden y visibilidad por la misma operación (D-74, D-78).
 
 ## Capa de datos
 
@@ -78,8 +79,9 @@ app/                         [DEMO] rutas Next
   (home)/                    grupo de ruta: no afecta la URL, solo agrupa
     page.tsx                 Home de la demo (raíz `/`)
     home-bdui-provider.tsx   registry de acciones de la Home
-  ingresar/                  login por nombre (page + form + action)
-  configuracion/             panel (page + actions + componentes cliente, incl. interruptores de iniciativas)
+  ingresar/                  login por nombre (page + form + action + input.tsx propio, D-79)
+  configuracion/             panel (page + actions + componentes cliente; switch.tsx compartido por iniciativas y editor, D-79)
+    [variantId]/             editor de secciones de una vista: orden e interruptor de visibilidad, un solo «Guardar cambios» (D-74, D-78)
 contract/                    [ARQ] lo que se lleva al equipo técnico
   fixtures/                  respuestas simuladas del backend (Contract First, D-77)
     variants.json            metadatos de las vistas (seed de la tabla `variants`)
@@ -95,10 +97,10 @@ lib/                         lógica propia de ESTA app (no compartida entre pro
     adapters/                mock.ts [DEMO] · supabase.ts [ARQ]
 scripts/
   generate-supabase-seed.mjs genera 02-seed.sql desde contract/fixtures/ (npm run db:seed)
-packages/
+packages/                    solo lo que BDUI renderiza (D-79); lo exclusivo de una página de la PoC vive en app/
   bdui/                      [ARQ] schema, renderer, registry
   sections/                  una carpeta por sección del catálogo (incluye los headers)
-  ui/                        componentes base propios (Radix + cva + Tailwind)
+  ui/                        componentes base que usan las secciones (Radix + cva + Tailwind): button, carousel
 docs/                        esta documentación
 config/                      [DEMO] configuración local de la app; NO es contrato ni mock de endpoint (D-77)
   app-config.json            solo marca (logo, D-36); header y anuncio pasan al contrato
