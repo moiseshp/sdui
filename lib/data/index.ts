@@ -4,7 +4,7 @@
  *
  * [DEMO] The adapter is picked with the DATA_SOURCE environment variable:
  *   - `mock`     (default): in-memory, for offline work.
- *   - `supabase`: real backend (the 9 RPCs). Requires the variables in .env.example.
+ *   - `supabase`: real backend (the 11 RPCs). Requires the variables in .env.example.
  */
 
 import { mockDataSource } from './adapters/mock';
@@ -12,7 +12,7 @@ import { supabaseDataSource } from './adapters/supabase';
 import { sanitizeName } from './sanitize';
 import type { DataSource, VariantId } from './types';
 
-export type { DemoUser, InitiativeSummary, RegisterUserResult, SectionLayoutResult, VariantId, VariantSummary } from './types';
+export type { DemoUser, InitiativeSummary, RegisterUserResult, SectionLayoutResult, VariantId, VariantKind, VariantSummary } from './types';
 export { ANONYMOUS_VARIANT_ID, DEFAULT_VARIANT_ID, VARIANT_IDS, isVariantId } from './types';
 export { InvalidNameError } from './sanitize';
 
@@ -34,7 +34,7 @@ export function registerUser(name: string) {
   return getDataSource().upsertUser(sanitizeName(name));
 }
 
-/** `null` = no session: the backend answers with the anonymous view (D-69). */
+/** `null` = no session: the backend answers with the active anonymous view (D-69, D-81). */
 export function getHomeScreen(userId: string | null) {
   return getDataSource().getHomeScreen(userId);
 }
@@ -70,4 +70,14 @@ export function getVariantScreen(variantId: VariantId) {
  */
 export function reorderSections(variantId: VariantId, sectionIds: string[], hiddenSectionIds?: string[]) {
   return getDataSource().reorderSections(variantId, sectionIds, hiddenSectionIds);
+}
+
+/** The anonymous view every visitor without a session sees right now (D-81). */
+export function getAnonymousVariant() {
+  return getDataSource().getAnonymousVariant();
+}
+
+/** Switches the anonymous view for every visitor without a session. The backend rejects non-anonymous views (D-81). */
+export function setAnonymousVariant(variantId: VariantId) {
+  return getDataSource().setAnonymousVariant(variantId);
 }

@@ -30,7 +30,7 @@ Cliente (web / app / kiosko)
    │  2. getHomeScreen(userId | null)            ← en cada carga de la Home (`/`), con o sin sesión
    ▼
 Backend
-   │  sin sesión o usuario desconocido → vista anónima (guest)
+   │  sin sesión o usuario desconocido → la vista anónima activa (guest por defecto, D-81)
    │  con usuario → la vista asignada (al registrarse: logged)
    │  quita las secciones ocultas desde el panel (D-78)
    │  agrega bottomBar con la iniciativa prendida de mayor prioridad para esa vista
@@ -41,11 +41,11 @@ Screen JSON (contrato v1.2)
 Cliente: valida → ScreenRenderer → tema + header slot + layout + secciones + bottom bar
 ```
 
-Panel (`/configuracion`): `listUsers()`, `listVariants()`, `assignVariant(userId, variantId)`, `listInitiatives()`, `setInitiativeEnabled(initiativeId, enabled)`. Editor de secciones (`/configuracion/[vista]`): `getVariantScreen(variantId)`, `reorderSections(variantId, sectionIds, hiddenSectionIds?)` — orden y visibilidad por la misma operación (D-74, D-78).
+Panel (`/configuracion`, tres tabs, D-80): `listUsers()`, `listVariants()`, `assignVariant(userId, variantId)`, `getAnonymousVariant()`, `setAnonymousVariant(variantId)`, `listInitiatives()`, `setInitiativeEnabled(initiativeId, enabled)`. Editor de secciones (`/configuracion/[vista]`): `getVariantScreen(variantId)`, `reorderSections(variantId, sectionIds, hiddenSectionIds?)` — orden y visibilidad por la misma operación (D-74, D-78).
 
 ## Capa de datos
 
-- `[ARQ]` Las vistas solo conocen las **9 operaciones**: `registerUser`, `listUsers`, `listVariants`, `assignVariant`, `getHomeScreen`, `listInitiatives`, `setInitiativeEnabled`, `getVariantScreen`, `reorderSections` (detalle en `contrato.md`).
+- `[ARQ]` Las vistas solo conocen las **11 operaciones**: `registerUser`, `listUsers`, `listVariants`, `assignVariant`, `getHomeScreen`, `listInitiatives`, `setInitiativeEnabled`, `getVariantScreen`, `reorderSections`, `getAnonymousVariant`, `setAnonymousVariant` (detalle en `contrato.md`).
 - `[ARQ]` Hay **adaptadores intercambiables** detrás de esas operaciones:
   - `mock` → fixtures JSON de `contract/fixtures/` + estado en memoria (Iteración 2).
   - `supabase` → backend real (Iteración 3).
@@ -80,19 +80,19 @@ app/                         [DEMO] rutas Next
     page.tsx                 Home de la demo (raíz `/`)
     home-bdui-provider.tsx   registry de acciones de la Home
   ingresar/                  login por nombre (page + form + action + input.tsx propio, D-79)
-  configuracion/             panel (page + actions + componentes cliente; switch.tsx compartido por iniciativas y editor, D-79)
+  configuracion/             panel en tres tabs: Vistas, Segmentos, Mensajes (D-80); page + actions + un componente por tab; switch.tsx compartido por iniciativas y editor (D-79)
     [variantId]/             editor de secciones de una vista: orden e interruptor de visibilidad, un solo «Guardar cambios» (D-74, D-78)
 contract/                    [ARQ] lo que se lleva al equipo técnico
   fixtures/                  respuestas simuladas del backend (Contract First, D-77)
     variants.json            metadatos de las vistas (seed de la tabla `variants`)
-    variant-guest.json       una por vista: guest, logged, loyalty, christmas, heavy, birthday
+    variant-guest.json       una por vista: guest, guest-signup, logged, loyalty, christmas, heavy, birthday
     ...
     initiatives.json         iniciativas de la bottom bar (seed de la tabla `initiatives`)
 supabase/                    [ARQ] backend: 01-schema.sql, 02-seed.sql (generado), 03-cleanup.sql
 lib/                         lógica propia de ESTA app (no compartida entre proyectos)
   session.ts                 [DEMO] cookie de sesión
   data/                      capa de datos (ver contrato.md §4)
-    index.ts, types.ts       [ARQ] las 9 operaciones + interfaz DataSource
+    index.ts, types.ts       [ARQ] las 11 operaciones + interfaz DataSource
     sanitize.ts              [DEMO] sanitización del nombre
     adapters/                mock.ts [DEMO] · supabase.ts [ARQ]
 scripts/

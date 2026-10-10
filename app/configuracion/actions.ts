@@ -1,7 +1,7 @@
 'use server';
 
 import { refresh } from 'next/cache';
-import { assignVariant, isVariantId, listUsers, reorderSections, setInitiativeEnabled } from '@/lib/data';
+import { assignVariant, isVariantId, listUsers, reorderSections, setAnonymousVariant, setInitiativeEnabled } from '@/lib/data';
 
 /** Assigns a view to one person and refreshes the panel. */
 export async function assignVariantAction(userId: string, variantId: string) {
@@ -24,6 +24,16 @@ export async function assignAllAction(variantId: string) {
 /** Turns a bottom bar initiative on or off (feature flag, D-64). */
 export async function setInitiativeEnabledAction(initiativeId: string, enabled: boolean) {
   await setInitiativeEnabled(initiativeId, enabled);
+  refresh();
+}
+
+/**
+ * Picks the view that every visitor without a session sees (D-81). The backend
+ * rejects views that are not meant for people without a session.
+ */
+export async function setAnonymousVariantAction(variantId: string) {
+  if (!isVariantId(variantId)) throw new Error(`Invalid view: ${variantId}`);
+  await setAnonymousVariant(variantId);
   refresh();
 }
 

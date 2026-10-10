@@ -11,7 +11,11 @@
       "title": "¡Felices fiestas, {{firstName}}! 🎄",
       "subtitle": "Esta Navidad, la cena la ponemos nosotros",
       "position": "sticky",
-      "variant": "default"
+      "variant": "default",
+      "actions": {
+        "user": { "onPress": [{ "type": "NAVIGATE", "payload": { "url": "/ingresar" } }] },
+        "settings": { "onPress": [{ "type": "NAVIGATE", "payload": { "url": "/configuracion" } }] }
+      }
     }
   },
   "sections": [

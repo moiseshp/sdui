@@ -18,12 +18,14 @@ import variantsSeed from '@/contract/fixtures/variants.json';
 import viewBirthday from '@/contract/fixtures/variant-birthday.json';
 import viewChristmas from '@/contract/fixtures/variant-christmas.json';
 import viewGuest from '@/contract/fixtures/variant-guest.json';
+import viewGuestSignup from '@/contract/fixtures/variant-guest-signup.json';
 import viewHeavy from '@/contract/fixtures/variant-heavy.json';
 import viewLogged from '@/contract/fixtures/variant-logged.json';
 import viewLoyalty from '@/contract/fixtures/variant-loyalty.json';
 
 const screensByVariant: Record<VariantId, Record<string, unknown>> = {
   guest: viewGuest,
+  'guest-signup': viewGuestSignup,
   logged: viewLogged,
   loyalty: viewLoyalty,
   christmas: viewChristmas,
@@ -47,6 +49,8 @@ type MockDb = {
   sectionOrder?: Map<VariantId, string[]>;
   /** Saved hidden sections per view (D-78). Missing = the fixture's own `hidden` flags. */
   hiddenSections?: Map<VariantId, string[]>;
+  /** Anonymous view every visitor without a session sees (D-81). Missing = `guest`. */
+  anonymousVariantId?: VariantId;
 };
 
 const globalForMock = globalThis as unknown as { __bduiMockDb?: MockDb };
@@ -54,6 +58,13 @@ const db: MockDb = (globalForMock.__bduiMockDb ??= { users: new Map() });
 const initiativesEnabled = (db.initiativesEnabled ??= new Map(initiatives.map(i => [i.id, i.enabledByDefault])));
 const sectionOrder = (db.sectionOrder ??= new Map<VariantId, string[]>());
 const hiddenSections = (db.hiddenSections ??= new Map<VariantId, string[]>());
+
+/** Active anonymous view. Falls back to `guest` if the stored one is no longer an anonymous view (D-81). */
+function activeAnonymousVariantId(): VariantId {
+  const stored = db.anonymousVariantId;
+  if (stored && variants.some(variant => variant.id === stored && variant.kind === 'anonymous')) return stored;
+  return ANONYMOUS_VARIANT_ID;
+}
 
 /* -------------------------------------------------------------------------- */
 /* Backend rules (D-08, D-64)                                                  */
@@ -125,11 +136,11 @@ export const mockDataSource: DataSource = {
   },
 
   async getHomeScreen(userId) {
-    // No session or unknown user (data deleted, server restarted): anonymous view (D-69).
+    // No session or unknown user (data deleted, server restarted): the active anonymous view (D-69, D-81).
     const user = userId ? db.users.get(userId) : undefined;
 
     // Users left in memory from the deprecated A–D presets fall back to the default view.
-    const variantId = !user ? ANONYMOUS_VARIANT_ID : isVariantId(user.variantId) ? user.variantId : DEFAULT_VARIANT_ID;
+    const variantId = !user ? activeAnonymousVariantId() : isVariantId(user.variantId) ? user.variantId : DEFAULT_VARIANT_ID;
     const winner = winningInitiative(variantId);
     const base = withoutHiddenSections(storedScreen(variantId));
     const screen = winner ? { ...base, bottomBar: winner.section } : base;
@@ -197,5 +208,19 @@ export const mockDataSource: DataSource = {
     sectionOrder.set(variantId, [...sectionIds]);
     hiddenSections.set(variantId, [...hidden]);
     return { sectionIds: [...sectionIds], hiddenSectionIds: sectionIds.filter(id => hidden.includes(id)) };
+  },
+
+  async getAnonymousVariant() {
+    return activeAnonymousVariantId();
+  },
+
+  async setAnonymousVariant(variantId) {
+    // Same rule as the SQL function: only views meant for people without a session (D-81).
+    const variant = variants.find(item => item.id === variantId);
+    if (!variant) throw new Error(`Unknown view: ${variantId}`);
+    if (variant.kind !== 'anonymous') throw new Error(`The view "${variantId}" is not for people without a session`);
+
+    db.anonymousVariantId = variantId;
+    return variantId;
   },
 };

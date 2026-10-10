@@ -1,10 +1,11 @@
 'use client';
 
+import { usePressHandler } from '@/packages/bdui/hooks/use-press-handler';
 import { Button } from '@/packages/ui/button';
 import { cn } from '@/packages/utils/cn';
-import { MagnifyingGlassIcon, ShoppingCartIcon } from '@phosphor-icons/react';
+import { UserSwitchIcon, ShoppingCartIcon, SlidersIcon, type Icon } from '@phosphor-icons/react';
 import { cva } from 'class-variance-authority';
-import type { HeaderDefaultProps, HeaderVariant } from './schema';
+import type { HeaderActions, HeaderDefaultProps, HeaderVariant } from './schema';
 
 // [DEMO] The brand (logo) is not part of the contract: it is local app config,
 // like an asset in native. The contract only decides which header to show (D-36, D-77).
@@ -37,8 +38,23 @@ export const headerSurfaceVariants = cva('px-4 text-white', {
   defaultVariants: { variant: 'default' },
 });
 
+/** Semantic button name (contract key) → this platform's label and icon. */
+const topBarButtons: { key: keyof HeaderActions; label: string; icon: Icon }[] = [
+  { key: 'user', label: 'Usuario', icon: UserSwitchIcon },
+  { key: 'settings', label: 'Configuración', icon: SlidersIcon },
+  { key: 'cart', label: 'Carrito', icon: ShoppingCartIcon },
+];
+
+export interface HeaderTopBarProps {
+  variant?: HeaderVariant;
+  /** What each button does comes from the contract. Without actions, the button is decorative (D-32). */
+  actions?: HeaderActions;
+}
+
 /** Top bar shared by both headers: logo + actions. */
-export function HeaderTopBar({ variant }: { variant?: HeaderVariant }) {
+export function HeaderTopBar({ variant, actions }: HeaderTopBarProps) {
+  const bindPress = usePressHandler();
+
   // The action buttons are primary-colored, which blends into the default (red)
   // bar. On a dark bar they would show up as red squares, so they go transparent.
   const actionClassName = variant === 'dark' ? 'bg-transparent hover:bg-white/10' : undefined;
@@ -47,22 +63,24 @@ export function HeaderTopBar({ variant }: { variant?: HeaderVariant }) {
     <div className="flex h-14 items-center justify-between">
       <img src={brandLogo.defaultUrl} alt={brandLogo.alt} />
       <nav className="flex items-center gap-2">
-        <Button size="icon-lg" aria-label="Buscar" className={actionClassName}>
-          <MagnifyingGlassIcon className="size-6" />
-        </Button>
-        <Button size="icon-lg" aria-label="Carrito" className={actionClassName}>
-          <ShoppingCartIcon className="size-6" />
-        </Button>
+        {topBarButtons.map(({ key, label, icon: IconComponent }) => {
+          const { onPress } = bindPress(actions?.[key]);
+          return (
+            <Button key={key} size="icon-lg" aria-label={label} className={actionClassName} onClick={onPress}>
+              <IconComponent className="size-6" />
+            </Button>
+          );
+        })}
       </nav>
     </div>
   );
 }
 
-export function HeaderDefault({ position, variant }: HeaderDefaultProps) {
+export function HeaderDefault({ position, variant, actions }: HeaderDefaultProps) {
   return (
     <header data-slot="header-default" className={cn(headerVariants({ position }))}>
       <div className={headerSurfaceVariants({ variant })}>
-        <HeaderTopBar variant={variant} />
+        <HeaderTopBar variant={variant} actions={actions} />
       </div>
     </header>
   );

@@ -6,6 +6,7 @@ import type { VariantId } from '@/lib/data';
  */
 export const variantBadge: Record<VariantId, { className: string; emoji: string }> = {
   guest: { className: 'bg-neutral-200 text-neutral-900', emoji: '👤' },
+  'guest-signup': { className: 'bg-sky-100 text-sky-900', emoji: '🎟️' },
   logged: { className: 'bg-primary text-white', emoji: '🙂' },
   loyalty: { className: 'bg-neutral-900 text-amber-300', emoji: '⭐' },
   christmas: { className: 'bg-emerald-700 text-white', emoji: '🎄' },

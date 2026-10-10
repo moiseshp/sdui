@@ -8,11 +8,11 @@ import { Switch } from './switch';
 
 interface InitiativeToggleProps {
   initiative: InitiativeSummary;
-  /** Already resolved by the page: "Todas las vistas" or the view names. */
+  /** Already resolved by the panel, in product words: "Quien navega sin sesión", "Todos, con y sin sesión"... */
   audienceLabel: string;
 }
 
-/** On/off switch for one bottom bar initiative (feature flag, D-64). */
+/** On/off switch for one highlighted message of the bottom bar (feature flag, D-64, D-80). */
 export function InitiativeToggle({ initiative, audienceLabel }: InitiativeToggleProps) {
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
@@ -29,13 +29,19 @@ export function InitiativeToggle({ initiative, audienceLabel }: InitiativeToggle
   return (
     <li className="rounded-2xl bg-white p-4 shadow-sm">
       <div className="flex items-start gap-3">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-black">
+        <span
+          aria-hidden="true"
+          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-sm font-black"
+        >
           P{priority}
         </span>
         <div className="min-w-0 flex-1">
           <p className="font-bold">{name}</p>
           <p className="text-sm text-muted-foreground">{description}</p>
-          <p className="mt-1 text-xs font-medium text-muted-foreground">Para: {audienceLabel}</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            <span className="font-bold">Prioridad {priority}</span>
+            {priority === 1 ? ' (la más alta)' : ''} · <span className="font-bold">Quién lo ve:</span> {audienceLabel}
+          </p>
         </div>
         <Switch
           checked={enabled}
@@ -45,7 +51,7 @@ export function InitiativeToggle({ initiative, audienceLabel }: InitiativeToggle
         />
       </div>
       <p aria-live="polite" className="mt-2 min-h-5 text-sm text-muted-foreground">
-        {isPending ? 'Guardando…' : saved ? `Listo: ${enabled ? 'prendida' : 'apagada'}. Pide a la sala que recargue.` : ''}
+        {isPending ? 'Guardando…' : saved ? `Listo: mensaje ${enabled ? 'prendido' : 'apagado'}. Pide a la sala que recargue.` : ''}
       </p>
     </li>
   );

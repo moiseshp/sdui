@@ -1,142 +1,72 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { connection } from 'next/server';
 
-import { getDataSourceName, listInitiatives, listUsers, listVariants } from '@/lib/data';
+import { getAnonymousVariant, getDataSourceName, listInitiatives, listUsers, listVariants } from '@/lib/data';
 import { cn } from '@/packages/utils/cn';
-import { BulkAssign } from './bulk-assign';
-import { InitiativeToggle } from './initiative-toggle';
-import { RefreshButton } from './refresh-button';
-import { VariantSelect } from './variant-select';
-import { variantBadge } from './variant-styles';
+import { MessagesTab } from './messages-tab';
+import { parsePanelTab } from './panel-model';
+import { PanelTabs } from './panel-tabs';
+import { SegmentsTab } from './segments-tab';
+import { ViewsTab } from './views-tab';
 
 export const metadata: Metadata = {
   title: 'Panel de experimentos · KFC',
 };
 
 /**
- * Presenter panel (docs/variantes-y-vistas.md → /configuracion).
- * The route stays in Spanish because it is a URL the audience sees.
- * Mobile-first: in round 2 an attendee runs it from their phone (D-43).
+ * Presenter panel (docs/variantes-y-vistas.md → /configuracion). Desktop-only,
+ * operated by the presenter (D-75). The route stays in Spanish because it is a
+ * URL the audience sees.
+ *
+ * Three tabs, each answering one product question (D-80):
+ *   - Vistas    : what someone can see (without / with a session).
+ *   - Segmentos : who sees each view (each connected person = a segment).
+ *   - Mensajes  : which highlighted message shows at the bottom (bottom bar).
+ * The active tab lives in `?tab=` so reloads keep it.
  */
-export default async function ExperimentsPanelPage() {
+export default async function ExperimentsPanelPage({ searchParams }: { searchParams: Promise<{ tab?: string | string[] }> }) {
   // No cache: every request reads the current state (D-19).
   await connection();
 
-  const [users, variants, initiatives] = await Promise.all([listUsers(), listVariants(), listInitiatives()]);
-  const hasUsers = users.length > 0;
-  const dataSource = getDataSourceName();
-  const variantNames = new Map(variants.map(variant => [variant.id, variant.name]));
+  const [{ tab }, users, variants, initiatives, anonymousVariantId] = await Promise.all([
+    searchParams,
+    listUsers(),
+    listVariants(),
+    listInitiatives(),
+    getAnonymousVariant(),
+  ]);
+  const activeTab = parsePanelTab(tab);
+  const enabledMessages = initiatives.filter(initiative => initiative.enabled).length;
 
   return (
     <div className="min-h-dvh bg-neutral-100">
-      <main className="mx-auto w-full max-w-2xl px-4 py-6">
+      <main className="mx-auto w-full max-w-3xl px-4 py-6">
         <header>
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-bold uppercase tracking-widest text-primary">Demo BDUI</p>
-            <DataSourceBadge source={dataSource} />
+            <DataSourceBadge source={getDataSourceName()} />
           </div>
           <h1 className="mt-1 text-2xl font-black tracking-tight">Panel de experimentos</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Elige qué vista de la Home ve cada persona. Después, pídele que recargue.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Prueba cambios en la Home sin publicar una nueva versión de la app.
+          </p>
         </header>
 
-        <section aria-labelledby="presets-title" className="mt-6">
-          <h2 id="presets-title" className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
-            Vistas
-          </h2>
-          <ul className="mt-2 grid grid-cols-2 gap-2">
-            {variants.map(variant => (
-              <li key={variant.id}>
-                <Link
-                  href={`/configuracion/${variant.id}`}
-                  className="group flex h-full gap-2 rounded-xl bg-white p-3 transition-shadow hover:shadow-md hover:ring-2 hover:ring-primary/40"
-                >
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      'flex size-7 shrink-0 items-center justify-center rounded-full text-sm',
-                      variantBadge[variant.id].className,
-                    )}
-                  >
-                    {variantBadge[variant.id].emoji}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold">{variant.name}</p>
-                    <p className="text-xs text-muted-foreground">{variant.description}</p>
-                    <p className="mt-1 text-xs font-bold text-primary group-hover:underline">Ordenar y ocultar secciones →</p>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-          <BulkAssign variants={variants} hasUsers={hasUsers} />
-        </section>
+        <PanelTabs
+          active={activeTab}
+          hints={{
+            segments: String(users.length),
+            messages: `${enabledMessages} ${enabledMessages === 1 ? 'activo' : 'activos'}`,
+          }}
+        />
 
-        <section aria-labelledby="users-title" className="mt-4">
-          <div className="mb-3 flex items-baseline justify-between">
-            <h2 id="users-title" className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
-              Personas conectadas
-            </h2>
-            <span className="text-sm font-bold">{users.length}</span>
-          </div>
-
-          <RefreshButton />
-
-          {hasUsers ? (
-            <ul className="mt-4 flex flex-col gap-3">
-              {users.map(user => (
-                <li key={user.id} className="rounded-2xl bg-white p-4 shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <span
-                      aria-label={`Ve la vista ${variantNames.get(user.variantId) ?? user.variantId}`}
-                      className={cn(
-                        'flex size-10 shrink-0 items-center justify-center rounded-full text-lg',
-                        variantBadge[user.variantId].className,
-                      )}
-                    >
-                      {variantBadge[user.variantId].emoji}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate text-lg font-bold">{user.displayName}</p>
-                      <p className="truncate font-mono text-xs text-muted-foreground">{user.id}</p>
-                    </div>
-                  </div>
-                  <VariantSelect userId={user.id} displayName={user.displayName} value={user.variantId} variants={variants} />
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="mt-4 rounded-2xl border-2 border-dashed border-border bg-white p-6 text-center">
-              <p className="font-bold">Aún no hay personas conectadas</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Pide que entren a la web e ingresen su nombre. Luego toca «Actualizar lista».
-              </p>
-            </div>
+        <div className="mt-6">
+          {activeTab === 'views' && <ViewsTab variants={variants} users={users} anonymousVariantId={anonymousVariantId} />}
+          {activeTab === 'segments' && <SegmentsTab users={users} variants={variants} />}
+          {activeTab === 'messages' && (
+            <MessagesTab initiatives={initiatives} variants={variants} anonymousVariantId={anonymousVariantId} />
           )}
-        </section>
-
-        <section aria-labelledby="bottom-bar-title" className="mt-8">
-          <h2 id="bottom-bar-title" className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
-            Bottom bar
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Iniciativas que se prenden y apagan sin release. Si a una vista le aplica más de una, se muestra la de mayor prioridad
-            (P1 es la más alta).
-          </p>
-          <ul className="mt-3 flex flex-col gap-3">
-            {initiatives.map(initiative => (
-              <InitiativeToggle
-                key={initiative.id}
-                initiative={initiative}
-                audienceLabel={
-                  initiative.audience
-                    ? initiative.audience.map(id => variantNames.get(id) ?? id).join(', ')
-                    : 'Todas las vistas'
-                }
-              />
-            ))}
-          </ul>
-        </section>
+        </div>
       </main>
     </div>
   );

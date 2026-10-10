@@ -6,11 +6,22 @@
  * Switching backends never touches the views.
  */
 
-/** Context views (D-62). The order is the one shown in the panel. */
-export const VARIANT_IDS = ['guest', 'logged', 'loyalty', 'christmas', 'heavy', 'birthday'] as const;
+/** Context views (D-62, D-81). The order is the one shown in the panel. */
+export const VARIANT_IDS = ['guest', 'guest-signup', 'logged', 'loyalty', 'christmas', 'heavy', 'birthday'] as const;
 export type VariantId = (typeof VARIANT_IDS)[number];
 
-/** View for people without a session (the "not logged in" home). */
+/**
+ * Who a view is for (D-81):
+ *  - `anonymous`: people without a session. Exactly one of these is active at a
+ *    time and every visitor sees it (`getAnonymousVariant`).
+ *  - `signed-in`: registered people, assigned one by one (`assignVariant`).
+ */
+export type VariantKind = 'anonymous' | 'signed-in';
+
+/**
+ * Fallback anonymous view: active until another one is chosen, and the one the
+ * backend uses if the setting is missing (D-69, D-81).
+ */
 export const ANONYMOUS_VARIANT_ID: VariantId = 'guest';
 
 /** View the backend assigns to every person when they sign in (D-69). */
@@ -34,6 +45,7 @@ export interface VariantSummary {
   id: VariantId;
   name: string;
   description: string;
+  kind: VariantKind;
 }
 
 /**
@@ -79,8 +91,8 @@ export interface DataSource {
    * Returns the screen ALREADY resolved: the view without its hidden sections
    * (D-78), the winning bottom bar (if any) and {{displayName}} interpolated.
    * Not validated: the client validates it with `parseScreen`.
-   * No session (`null`) or unknown user → the anonymous view (D-69). It never
-   * returns `null`: the Home is public.
+   * No session (`null`) or unknown user → the active anonymous view (D-69,
+   * D-81). It never returns `null`: the Home is public.
    */
   getHomeScreen(userId: string | null): Promise<unknown>;
   /** Ordered by arrival (createdAt ascending). */
@@ -105,4 +117,11 @@ export interface DataSource {
    * `hiddenSectionIds` omitted = keep the current visibility.
    */
   reorderSections(variantId: VariantId, sectionIds: string[], hiddenSectionIds?: string[]): Promise<SectionLayoutResult>;
+  /** The anonymous view every visitor without a session sees right now (D-81). */
+  getAnonymousVariant(): Promise<VariantId>;
+  /**
+   * Switches the anonymous view for every visitor without a session (D-81).
+   * Rejects views that are not `anonymous`. Returns the view now active.
+   */
+  setAnonymousVariant(variantId: VariantId): Promise<VariantId>;
 }

@@ -9,11 +9,11 @@ import type { HeaderGreetingProps } from './schema';
  * renders `title` and `subtitle` exactly as the backend sends them.
  * It shares the `variant` set with `header_default` (D-60).
  */
-export function HeaderGreeting({ title, subtitle, position, variant }: HeaderGreetingProps) {
+export function HeaderGreeting({ title, subtitle, position, variant, actions }: HeaderGreetingProps) {
   return (
     <header data-slot="header-greeting" className={cn(headerVariants({ position }))}>
       <div className={cn(headerSurfaceVariants({ variant }), 'pb-5')}>
-        <HeaderTopBar variant={variant} />
+        <HeaderTopBar variant={variant} actions={actions} />
         <p className="mt-2 text-3xl font-black tracking-tight">{title}</p>
         {subtitle && <p className="mt-1 text-sm font-medium opacity-90">{subtitle}</p>}
       </div>

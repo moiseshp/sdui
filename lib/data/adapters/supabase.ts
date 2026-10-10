@@ -1,5 +1,5 @@
 /**
- * Supabase adapter: calls the 9 contract RPCs over plain HTTP.
+ * Supabase adapter: calls the 11 contract RPCs over plain HTTP.
  *
  * [ARQ] No SDK on purpose: this is exactly what a native app or a .NET backend
  * would do. Each operation is a POST to /rest/v1/rpc/<function> with the public
@@ -10,7 +10,15 @@
  * variables don't need the NEXT_PUBLIC_ prefix.
  */
 
-import type { DataSource, DemoUser, InitiativeSummary, RegisterUserResult, SectionLayoutResult, VariantSummary } from '../types';
+import type {
+  DataSource,
+  DemoUser,
+  InitiativeSummary,
+  RegisterUserResult,
+  SectionLayoutResult,
+  VariantId,
+  VariantSummary,
+} from '../types';
 
 /** Accepts the variable names the Supabase dashboard usually suggests. */
 function readConfig() {
@@ -93,4 +101,10 @@ export const supabaseDataSource: DataSource = {
       p_section_ids: sectionIds,
       p_hidden_section_ids: hiddenSectionIds ?? null,
     }),
+
+  // Active anonymous view for every visitor without a session (D-81).
+  getAnonymousVariant: () => rpc<VariantId>('get_anonymous_variant'),
+
+  // The RPC rejects views that are not `anonymous` (D-81).
+  setAnonymousVariant: variantId => rpc<VariantId>('set_anonymous_variant', { p_variant_id: variantId }),
 };

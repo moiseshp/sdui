@@ -47,8 +47,8 @@ export default async function SectionOrderPage({ params }: { params: Promise<{ v
   return (
     <div className="min-h-dvh bg-neutral-100">
       <main className="mx-auto w-full max-w-2xl px-4 py-6">
-        <Link href="/configuracion" className="text-sm font-bold text-primary hover:underline">
-          ← Volver al panel
+        <Link href="/configuracion?tab=vistas" className="text-sm font-bold text-primary hover:underline">
+          ← Volver a Vistas
         </Link>
 
         <header className="mt-3">

@@ -12,14 +12,18 @@ interface BulkAssignProps {
   hasUsers: boolean;
 }
 
-/** One shortcut per view: "Todos a 👤 Default", ... "Todos a Logeado" doubles as rollback (D-66, D-69). */
+/**
+ * One shortcut per view for every segment at once: "Todos a 🙂 Logeado", ...
+ * "Todos a Logeado" doubles as rollback (D-66, D-69). The panel only passes
+ * views for signed-in people (D-81).
+ */
 export function BulkAssign({ variants, hasUsers }: BulkAssignProps) {
   const [isPending, startTransition] = useTransition();
 
   return (
-    <div className="mt-3">
-      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Asignar a todos</p>
-      <div className="mt-2 grid grid-cols-2 gap-2">
+    <div className="mt-6">
+      <p className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Asignar a todos los segmentos</p>
+      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
         {variants.map(variant => (
           <button
             key={variant.id}

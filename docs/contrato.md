@@ -70,8 +70,8 @@ Implementado en `packages/bdui/schema/screen.ts` (`ScreenSchema`, `ScreenLayoutS
 
 | `type` | Props | Notas |
 |--------|-------|-------|
-| `header_default` | `position?: static\|sticky`, `variant?: default\|dark` | Header actual (logo de marca desde `config/app-config.json`, que no es parte del contrato: D-36, D-77). `default` = barra de marca; `dark` = barra oscura (D-60, D-73). |
-| `header_greeting` | `title: string`, `subtitle?: string`, `position?`, `variant?: default\|dark` | `title` llega **ya interpolado** ("¡Hola, Moisés!"). Mismas variantes que `header_default`. |
+| `header_default` | `position?: static\|sticky`, `variant?: default\|dark`, `actions?: { user?, settings?, cart? }` | Header actual (logo de marca desde `config/app-config.json`, que no es parte del contrato: D-36, D-77). `default` = barra de marca; `dark` = barra oscura (D-60, D-73). `actions` lleva un trigger map por botón de la barra, con nombre semántico; el cliente solo dispara `onPress` (en los fixtures, `user` → `NAVIGATE /ingresar` y `settings` → `NAVIGATE /configuracion`). Sin `actions`, el botón es decorativo (D-32). |
+| `header_greeting` | `title: string`, `subtitle?: string`, `position?`, `variant?: default\|dark`, `actions?` | `title` llega **ya interpolado** ("¡Hola, Moisés!"). Mismas variantes y `actions` que `header_default` (comparten la barra superior). |
 | `announcement_bar` | `message: string`, `variant?: dark\|light` (por defecto `dark`), `isDismissible?: boolean` | Antes vivía en `app-config.json`. Si la sección está presente, se muestra (ya no existe `isVisible`). |
 | `coupon_card` | `title`, `description?`, `code`, `validUntilLabel` (texto ya formateado), `badge?`, `cta?: { label, actions }` | Campaña/cupón por segmento. Copiar el código es comportamiento local del componente. |
 | `daypart_menu` | `title`, `daypartLabel` (p. ej. "Almuerzo · 12:00–16:00"), `storeLabel?`, `items[]` (id, name, imageUrl?, price?, actions?) | El backend decide la franja; el cliente solo pinta. Hoy ninguna vista la usa; se conserva en el catálogo. |
@@ -132,20 +132,24 @@ Las vistas solo usan estas operaciones. Cada adaptador (`mock`, `supabase`, futu
 | `registerUser` | `name: string` (sin sanitizar; la operación sanitiza) | `{ id, displayName, isNew }` | `/ingresar` |
 | `getHomeScreen` | `userId: string \| null` | `Screen` resuelto (nunca `null`) | `/` (Home) |
 | `listUsers` | — | `{ id, displayName, variantId, createdAt }[]` | `/configuracion` |
-| `listVariants` | — | `{ id, name, description }[]` | `/configuracion` |
+| `listVariants` | — | `{ id, name, description, kind }[]` (`kind`: `anonymous` \| `signed-in`, D-81) | `/configuracion` |
 | `assignVariant` | `userId, variantId` | usuario actualizado | `/configuracion` |
 | `listInitiatives` | — | `{ id, name, description, priority, audience, enabled }[]` | `/configuracion` |
 | `setInitiativeEnabled` | `initiativeId, enabled` | iniciativa actualizada | `/configuracion` |
 | `getVariantScreen` | `variantId` | `screen` guardado de la vista, como **plantilla** (sin interpolar, sin `bottomBar` y con las secciones ocultas marcadas `hidden: true`); `null` si no existe | `/configuracion/[vista]` |
 | `reorderSections` | `variantId, sectionIds[], hiddenSectionIds[]?` | `{ sectionIds, hiddenSectionIds }` guardados | `/configuracion/[vista]` |
+| `getAnonymousVariant` | — | `variantId` de la vista anónima activa | `/configuracion` |
+| `setAnonymousVariant` | `variantId` | `variantId` que quedó activo | `/configuracion` |
 
 Reglas:
 
 - `registerUser`: si el `id` sanitizado ya existe, **no crea** otro; devuelve el existente con `isNew: false` y **no** sobrescribe `displayName` (gana el primero).
 - Usuario nuevo → `variantId: "logged"`: al registrarse, el backend le asigna la vista Logeado (D-69). Desde ahí, las demás vistas se asignan por configuración en el panel.
-- `getHomeScreen`: la Home es **pública** (D-69). Sin sesión (`null`) o con un usuario desconocido, devuelve la vista anónima `guest`. Con usuario, la vista que tiene asignada. Le quita las secciones ocultas y el flag `hidden` (D-78), le agrega `bottomBar` según §4.1 y, si hay usuario, reemplaza los tokens `{{displayName}}` y `{{firstName}}` en todos los strings (§2). Nunca devuelve `null`. Devuelve el payload **sin validar**: el cliente valida con `parseScreen`.
+- `getHomeScreen`: la Home es **pública** (D-69). Sin sesión (`null`) o con un usuario desconocido, devuelve la **vista anónima activa** (`getAnonymousVariant`, D-81). Con usuario, la vista que tiene asignada. Le quita las secciones ocultas y el flag `hidden` (D-78), le agrega `bottomBar` según §4.1 y, si hay usuario, reemplaza los tokens `{{displayName}}` y `{{firstName}}` en todos los strings (§2). Nunca devuelve `null`. Devuelve el payload **sin validar**: el cliente valida con `parseScreen`.
 - `listUsers`: ordenados por llegada (`createdAt` ascendente).
-- `variantId` válidos: `guest`, `logged`, `loyalty`, `christmas`, `heavy`, `birthday` (D-62).
+- `variantId` válidos: `guest`, `guest-signup`, `logged`, `loyalty`, `christmas`, `heavy`, `birthday` (D-62, D-81).
+- `kind` de cada vista (D-81): `anonymous` (`guest`, `guest-signup`) es para quien no tiene sesión; `signed-in` (el resto) es para personas registradas. `guest` debe ser `anonymous` y `logged`, `signed-in`.
+- `getAnonymousVariant` / `setAnonymousVariant` (D-81): **una sola** vista anónima está activa a la vez y la ven **todos** los visitantes sin sesión. Por defecto es `guest`. `setAnonymousVariant` rechaza vistas que no sean `anonymous`. No es un reparto A/B por persona: es un interruptor global (el reparto queda en el roadmap). Re-sembrar no lo cambia; `03-cleanup.sql` lo devuelve a `guest`.
 - `listInitiatives`: ordenadas por prioridad (1 primero). `audience: null` = todas las vistas.
 - `getVariantScreen`: devuelve el `screen` guardado **tal cual** (plantilla): conserva los tokens `{{…}}`, no agrega `bottomBar` e incluye las secciones ocultas con `hidden: true`. Sirve para que el panel muestre el orden y la visibilidad actuales.
 - `reorderSections` (D-74, D-78): guarda el **orden y la visibilidad** de las secciones del cuerpo en una sola operación. Recibe **solo ids**, nunca contenido:
@@ -167,17 +171,17 @@ Iniciativas de la demo (`contract/fixtures/initiatives.json`):
 |----|-----------|-----------|---------|-------------|
 | `incident` | 1 | Todas | apagada | Aviso de demoras en delivery (`warning`, no se puede cerrar). |
 | `address` | 2 | Todas | apagada | «¿Dónde te llevamos tu pedido?» (`dark`). |
-| `register` | 3 | `guest` | prendida | «Crea tu cuenta y llévate 10%» (`brand`). Su CTA navega a `/ingresar` (D-70). |
+| `register` | 3 | `guest`, `guest-signup` (sin sesión) | prendida | «Crea tu cuenta y llévate 10%» (`brand`). Su CTA navega a `/ingresar` (D-70). |
 
 Implementación (`lib/data/`):
 
 | Archivo | Rol |
 |---------|-----|
 | `types.ts` | `[ARQ]` Tipos y la interfaz `DataSource` que implementa cada backend. |
-| `index.ts` | `[ARQ]` Las 9 operaciones públicas. Único punto que importan las vistas. Elige el adaptador con `DATA_SOURCE` (por defecto `mock`). Exporta también `getDataSourceName()`, que el panel usa para mostrar la fuente activa (D-58). |
+| `index.ts` | `[ARQ]` Las 11 operaciones públicas. Único punto que importan las vistas. Elige el adaptador con `DATA_SOURCE` (por defecto `mock`). Exporta también `getDataSourceName()`, que el panel usa para mostrar la fuente activa (D-58). |
 | `sanitize.ts` | `[DEMO]` Sanitización del nombre (§5). `registerUser` la aplica antes de llamar al backend. |
 | `adapters/mock.ts` | `[DEMO]` Simula al backend: estado en memoria, resolución de la bottom bar e interpolación. `DATA_SOURCE=mock` (por defecto). |
-| `adapters/supabase.ts` | `[ARQ]` Llama las 9 RPC por HTTP plano (`fetch`, sin SDK): `POST {SUPABASE_URL}/rest/v1/rpc/<funcion>` con la clave pública en `apikey`. Es la referencia de cómo lo consumiría nativo/.NET. Valida el formato de la clave y rechaza la secreta (D-58). `DATA_SOURCE=supabase`. |
+| `adapters/supabase.ts` | `[ARQ]` Llama las 11 RPC por HTTP plano (`fetch`, sin SDK): `POST {SUPABASE_URL}/rest/v1/rpc/<funcion>` con la clave pública en `apikey`. Es la referencia de cómo lo consumiría nativo/.NET. Valida el formato de la clave y rechaza la secreta (D-58). `DATA_SOURCE=supabase`. |
 
 Como la sanitización vive en el frontend (D-07), el backend implementa `upsertUser({ id, displayName })` con el nombre ya sanitizado. En producción recibiría el nombre crudo.
 
@@ -217,6 +221,7 @@ variants                                   -- vistas; seed generado desde contra
   name          text  not null
   description   text  not null
   screen        jsonb not null              -- Screen v1.2 con tokens {{firstName}}/{{displayName}}, sin bottomBar; secciones ocultas con hidden: true (D-78)
+  kind          text  not null  check in ('anonymous', 'signed-in')   -- para quién es la vista (D-81)
 
 demo_users
   id            text  PK  check ^[a-z0-9]+(-[a-z0-9]+)*$   -- sanitizado
@@ -232,20 +237,26 @@ initiatives                                -- bottom bar (feature flags); seed d
   enabled             boolean not null     -- el flag; el seed no lo pisa
   enabled_by_default  boolean not null     -- estado al que vuelve 03-cleanup.sql
   section             jsonb not null       -- Section bottom_bar que se inyecta en el screen
+
+demo_settings                              -- una sola fila (D-81); la crea 02-seed.sql
+  id                    boolean PK default true  check (id)
+  anonymous_variant_id  text not null default 'guest'  FK → variants.id   -- vista que ven todos los visitantes sin sesión
 ```
 
-Seguridad: las tres tablas con RLS activo **sin políticas** y sin permisos para `anon`/`authenticated`. La clave pública solo puede invocar 9 funciones RPC (`security definer`), una por operación del contrato (D-49, D-65):
+Seguridad: las cuatro tablas con RLS activo **sin políticas** y sin permisos para `anon`/`authenticated`. La clave pública solo puede invocar 11 funciones RPC (`security definer`), una por operación del contrato (D-49, D-65, D-81):
 
 | Operación | RPC | Notas |
 |-----------|-----|-------|
 | `registerUser` | `upsert_user(p_id, p_display_name)` | `on conflict do nothing`; `isNew` según si insertó. |
-| `getHomeScreen` | `get_home_screen(p_user_id)` | Vista (`guest` si `p_user_id` es nulo o desconocido) sin sus secciones ocultas + `bottomBar` ganadora (§4.1) + interpolación de `{{displayName}}` y `{{firstName}}` escapados como string JSON. Nunca `null`. |
+| `getHomeScreen` | `get_home_screen(p_user_id)` | Vista (la anónima activa de `demo_settings` si `p_user_id` es nulo o desconocido; `guest` si no hay fila) sin sus secciones ocultas + `bottomBar` ganadora (§4.1) + interpolación de `{{displayName}}` y `{{firstName}}` escapados como string JSON. Nunca `null`. |
 | `listUsers` | `list_users()` | Orden por `created_at`. |
-| `listVariants` | `list_variants()` | Solo metadatos (sin `screen`), en el orden de `variants.json`. |
+| `listVariants` | `list_variants()` | Solo metadatos (sin `screen`) e incluye `kind`, en el orden de `variants.json`. |
 | `assignVariant` | `assign_variant(p_user_id, p_variant_id)` | Vista inexistente → error de FK. Usuario inexistente → error `P0002`. |
 | `listInitiatives` | `list_initiatives()` | Sin `section`. Orden por prioridad. |
 | `setInitiativeEnabled` | `set_initiative_enabled(p_initiative_id, p_enabled)` | Iniciativa inexistente → error `P0002`. |
 | `getVariantScreen` | `get_variant_screen(p_variant_id)` | Devuelve `variants.screen` tal cual (plantilla, con `hidden: true` en las ocultas). `null` si la vista no existe. |
 | `reorderSections` | `reorder_sections(p_variant_id, p_section_ids, p_hidden_section_ids default null)` | Valida que los ids sean exactamente las secciones de la vista y que los ocultos sean un subconjunto sin repetidos (error `22023` si no). Reordena `screen.sections` con `jsonb_set` y pone o quita `hidden: true`; con `p_hidden_section_ids` nulo conserva la visibilidad. Vista inexistente → error `P0002`. Devuelve `{ sectionIds, hiddenSectionIds }`. |
+| `getAnonymousVariant` | `get_anonymous_variant()` | Devuelve el id de la vista anónima activa (texto); `guest` si aún no existe la fila de `demo_settings`. |
+| `setAnonymousVariant` | `set_anonymous_variant(p_variant_id)` | Vista inexistente → error `P0002`; vista `signed-in` → error `22023`. Hace upsert de la fila de `demo_settings` y devuelve el id activo. |
 
 Las respuestas ya vienen en camelCase con la forma de `lib/data/types.ts`. Cada RPC es un endpoint REST (`POST /rest/v1/rpc/<nombre>`), consumible desde cualquier plataforma.

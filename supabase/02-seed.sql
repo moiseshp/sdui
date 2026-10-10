@@ -8,16 +8,18 @@
 -- Where:  Supabase → SQL Editor → New query → paste everything → Run.
 -- Order:  after 01-schema.sql.
 -- Idempotent: updates existing rows. Only touches demo_users to move people
--- off views that no longer exist. Never changes whether an initiative is on.
+-- off views that no longer exist. Never changes whether an initiative is on,
+-- nor the active anonymous view (unless that view is gone or not anonymous).
 -- =============================================================================
 
 -- 1. Views
-insert into public.variants (id, name, description, screen)
+insert into public.variants (id, name, description, kind, screen)
 values
   (
     'guest',
     'Default (no logeado)',
-    'Lo que ve quien entra sin sesión: banner, combos, lo más top, promos de la semana y oferta.',
+    'Vender primero: banner, combos, lo más top, promos de la semana y oferta.',
+    'anonymous',
     $json${
   "schemaVersion": "1.2.0",
   "screenId": "kfc_home",
@@ -29,7 +31,29 @@ values
     "version": 1,
     "props": {
       "position": "sticky",
-      "variant": "default"
+      "variant": "default",
+      "actions": {
+        "user": {
+          "onPress": [
+            {
+              "type": "NAVIGATE",
+              "payload": {
+                "url": "/ingresar"
+              }
+            }
+          ]
+        },
+        "settings": {
+          "onPress": [
+            {
+              "type": "NAVIGATE",
+              "payload": {
+                "url": "/configuracion"
+              }
+            }
+          ]
+        }
+      }
     }
   },
   "sections": [
@@ -228,9 +252,187 @@ values
 }$json$::jsonb
   ),
   (
+    'guest-signup',
+    'Enfoque registro (no logeado)',
+    'Registrar primero: cupón de bienvenida y beneficios de crear cuenta antes que los productos.',
+    'anonymous',
+    $json${
+  "schemaVersion": "1.2.0",
+  "screenId": "kfc_home",
+  "layout": "default",
+  "theme": "default",
+  "header": {
+    "id": "guest_signup_header",
+    "type": "header_default",
+    "version": 1,
+    "props": {
+      "position": "sticky",
+      "variant": "default",
+      "actions": {
+        "user": {
+          "onPress": [
+            {
+              "type": "NAVIGATE",
+              "payload": {
+                "url": "/ingresar"
+              }
+            }
+          ]
+        },
+        "settings": {
+          "onPress": [
+            {
+              "type": "NAVIGATE",
+              "payload": {
+                "url": "/configuracion"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "sections": [
+    {
+      "id": "guest_signup_announcement",
+      "type": "announcement_bar",
+      "version": 1,
+      "props": {
+        "message": "Crea tu cuenta gratis y desbloquea las ofertas Solo por hoy",
+        "variant": "dark",
+        "isDismissible": false
+      }
+    },
+    {
+      "id": "guest_signup_welcome_coupon",
+      "type": "coupon_card",
+      "version": 1,
+      "props": {
+        "title": "10% en tu primer pedido",
+        "description": "Crea tu cuenta en segundos y úsalo hoy mismo, en delivery o en tienda.",
+        "code": "BIENVENIDO10",
+        "validUntilLabel": "Válido en tu primer pedido",
+        "badge": "BIENVENIDA",
+        "cta": {
+          "label": "Crear mi cuenta",
+          "actions": {
+            "onPress": [
+              {
+                "type": "NAVIGATE",
+                "payload": {
+                  "url": "/ingresar"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "guest_signup_benefits",
+      "type": "promo_banner",
+      "version": 1,
+      "props": {
+        "title": "Con tu cuenta, pides más rápido",
+        "description": "Guarda tus favoritos y tu dirección, y recibe ofertas pensadas para ti.",
+        "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/sections/para_ti_delivery.jpg",
+        "badge": "BENEFICIOS",
+        "actions": {
+          "onPress": [
+            {
+              "type": "NAVIGATE",
+              "payload": {
+                "url": "/ingresar"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "guest_signup_hero",
+      "type": "hero_banner",
+      "version": 1,
+      "props": {
+        "items": [
+          {
+            "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/banners/mobile/dipeo.webp",
+            "alt": "Mega Dipeo - Combo desde S/24.90"
+          },
+          {
+            "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/banners/MOBILE_CYB_20260420.png",
+            "alt": "Big Box - La caja que lo tiene todo"
+          },
+          {
+            "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/banners/BANNER_LDHW_2_MOBILE.jpg",
+            "alt": "Nuevos Krushers - Refréscate"
+          }
+        ],
+        "viewportMode": "peek",
+        "autoplay": true,
+        "autoplayInterval": 5000,
+        "showDots": true
+      }
+    },
+    {
+      "id": "guest_signup_most_chosen",
+      "type": "featured_products",
+      "version": 1,
+      "props": {
+        "title": "Los combos más elegidos 🔥",
+        "layout": "carousel",
+        "items": [
+          {
+            "id": "prod_001",
+            "name": "Mega Familiar 15 Piezas",
+            "description": "15 piezas de pollo + 3 papas grandes + ensalada + 1.5L bebida",
+            "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/products/mega-promo-8-piezas-202602160411187422.jpg",
+            "price": "S/ 89.90",
+            "originalPrice": "S/ 109.90",
+            "badge": "-30%"
+          },
+          {
+            "id": "prod_002",
+            "name": "Big Box Original",
+            "description": "2 piezas de pollo + papas + ensalada + bebida + postre",
+            "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/products/mega-promo-10-piezas-202602160411385589.jpg",
+            "price": "S/ 24.90",
+            "originalPrice": "S/ 27.90",
+            "badge": "-15%"
+          },
+          {
+            "id": "prod_003",
+            "name": "Chicken Strips x6",
+            "description": "6 strips crocantes + salsa BBQ o ranch",
+            "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/products/mega-promo-10-piezas-202602160411385589.jpg",
+            "price": "S/ 29.90",
+            "originalPrice": "S/ 37.90",
+            "badge": "-20%"
+          },
+          {
+            "id": "prod_004",
+            "name": "Dúo Twister XL con papas",
+            "description": "2 Twister XL + 2 papas medianas",
+            "imageUrl": "https://delosi-pidelo.s3.amazonaws.com/kfc/products/duo-twister-xl-con-papas-202602160411547690.jpg",
+            "price": "S/ 32.90",
+            "originalPrice": "S/ 38.90",
+            "badge": "-15%"
+          }
+        ]
+      }
+    }
+  ],
+  "meta": {
+    "title": "KFC Perú - Inicio",
+    "description": "Vista Enfoque registro: alternativa para quien navega sin sesión. Prioriza crear cuenta antes que los productos."
+  }
+}$json$::jsonb
+  ),
+  (
     'logged',
     'Logeado',
     'Vista inicial al registrarse: saludo, anuncio exclusivo, elegidos para ti, favoritos y Solo por hoy.',
+    'signed-in',
     $json${
   "schemaVersion": "1.2.0",
   "screenId": "kfc_home",
@@ -244,7 +446,29 @@ values
       "title": "¡Hola, {{firstName}}!",
       "subtitle": "¿Qué se te antoja hoy?",
       "position": "sticky",
-      "variant": "default"
+      "variant": "default",
+      "actions": {
+        "user": {
+          "onPress": [
+            {
+              "type": "NAVIGATE",
+              "payload": {
+                "url": "/ingresar"
+              }
+            }
+          ]
+        },
+        "settings": {
+          "onPress": [
+            {
+              "type": "NAVIGATE",
+              "payload": {
+                "url": "/configuracion"
+              }
+            }
+          ]
+        }
+      }
     }
   },
   "sections": [
@@ -343,6 +567,7 @@ values
     'loyalty',
     'Loyalty',
     'Misma home del logeado con la marca en negro y el estado de puntos del Club.',
+    'signed-in',
     $json${
   "schemaVersion": "1.2.0",
   "screenId": "kfc_home",
@@ -356,7 +581,29 @@ values
       "title": "¡Hola, {{firstName}}!",
       "subtitle": "Miembro Club KFC Gold ★",
       "position": "sticky",
-      "variant": "default"
+      "variant": "default",
+      "actions": {
+        "user": {
+          "onPress": [
+            {
+              "type": "NAVIGATE",
+              "payload": {
+                "url": "/ingresar"
+              }
+            }
+          ]
+        },
+        "settings": {
+          "onPress": [
+            {
+              "type": "NAVIGATE",
+              "payload": {
+                "url": "/configuracion"
+              }
+            }
+          ]
+        }
+      }
     }
   },
   "sections": [
@@ -466,6 +713,7 @@ values
     'christmas',
     'Navidad',
     'Tema navideño: banquete, mesa navideña y pre-orden de Nochebuena.',
+    'signed-in',
     $json${
   "schemaVersion": "1.2.0",
   "screenId": "kfc_home",
@@ -479,7 +727,29 @@ values
       "title": "¡Felices fiestas, {{firstName}}! 🎄",
       "subtitle": "Esta Navidad, la cena la ponemos nosotros",
       "position": "sticky",
-      "variant": "default"
+      "variant": "default",
+      "actions": {
+        "user": {
+          "onPress": [
+            {
+              "type": "NAVIGATE",
+              "payload": {
+                "url": "/ingresar"
+              }
+            }
+          ]
+        },
+        "settings": {
+          "onPress": [
+            {
+              "type": "NAVIGATE",
+              "payload": {
+                "url": "/configuracion"
+              }
+            }
+          ]
+        }
+      }
     }
   },
   "sections": [
@@ -566,6 +836,7 @@ values
     'heavy',
     'Usuario heavy',
     'Beneficio por frecuencia, cupón Sólo para ti y sus pedidos de siempre.',
+    'signed-in',
     $json${
   "schemaVersion": "1.2.0",
   "screenId": "kfc_home",
@@ -579,7 +850,29 @@ values
       "title": "¡Qué bueno verte, {{firstName}}!",
       "subtitle": "Eres de nuestros clientes más frecuentes",
       "position": "sticky",
-      "variant": "default"
+      "variant": "default",
+      "actions": {
+        "user": {
+          "onPress": [
+            {
+              "type": "NAVIGATE",
+              "payload": {
+                "url": "/ingresar"
+              }
+            }
+          ]
+        },
+        "settings": {
+          "onPress": [
+            {
+              "type": "NAVIGATE",
+              "payload": {
+                "url": "/configuracion"
+              }
+            }
+          ]
+        }
+      }
     }
   },
   "sections": [
@@ -666,6 +959,7 @@ values
     'birthday',
     'Cumpleaños',
     'Saludo de cumpleaños, regalo del día y combos para celebrar.',
+    'signed-in',
     $json${
   "schemaVersion": "1.2.0",
   "screenId": "kfc_home",
@@ -679,7 +973,29 @@ values
       "title": "¡Feliz cumpleaños, {{firstName}}! 🎂",
       "subtitle": "Hoy la celebración corre por nuestra cuenta",
       "position": "sticky",
-      "variant": "default"
+      "variant": "default",
+      "actions": {
+        "user": {
+          "onPress": [
+            {
+              "type": "NAVIGATE",
+              "payload": {
+                "url": "/ingresar"
+              }
+            }
+          ]
+        },
+        "settings": {
+          "onPress": [
+            {
+              "type": "NAVIGATE",
+              "payload": {
+                "url": "/configuracion"
+              }
+            }
+          ]
+        }
+      }
     }
   },
   "sections": [
@@ -760,17 +1076,28 @@ values
 on conflict (id) do update
   set name        = excluded.name,
       description = excluded.description,
+      kind        = excluded.kind,
       screen      = excluded.screen;
 
--- 2. Retire views that are no longer in the fixtures (e.g. the A–D presets)
+-- 2. Active anonymous view (D-81): created once, kept on re-seed. Falls back to
+--    guest if its view is about to be retired or is no longer anonymous.
+insert into public.demo_settings (id, anonymous_variant_id)
+values (true, 'guest')
+on conflict (id) do nothing;
+
+update public.demo_settings
+   set anonymous_variant_id = 'guest'
+ where anonymous_variant_id not in ('guest', 'guest-signup');
+
+-- 3. Retire views that are no longer in the fixtures (e.g. the A–D presets)
 update public.demo_users
    set variant_id = 'logged'
- where variant_id not in ('guest', 'logged', 'loyalty', 'christmas', 'heavy', 'birthday');
+ where variant_id not in ('guest', 'guest-signup', 'logged', 'loyalty', 'christmas', 'heavy', 'birthday');
 
 delete from public.variants
- where id not in ('guest', 'logged', 'loyalty', 'christmas', 'heavy', 'birthday');
+ where id not in ('guest', 'guest-signup', 'logged', 'loyalty', 'christmas', 'heavy', 'birthday');
 
--- 3. Bottom bar initiatives (feature flags)
+-- 4. Bottom bar initiatives (feature flags)
 insert into public.initiatives (id, name, description, priority, audience, enabled, enabled_by_default, section)
 values
   (
@@ -823,7 +1150,7 @@ values
     'Invitar a registrarse',
     'Invita a crear una cuenta a quien navega sin sesión.',
     3,
-    array['guest']::text[],
+    array['guest', 'guest-signup']::text[],
     true,
     true,
     $json${

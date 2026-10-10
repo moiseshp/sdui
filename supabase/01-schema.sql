@@ -6,9 +6,9 @@
 -- Idempotent: safe to run again (also upgrades a database created with the
 -- A–D presets).
 --
--- Design (docs/contrato.md §4 and §6, docs/decisiones.md D-23, D-49, D-62–D-66, D-74, D-78):
+-- Design (docs/contrato.md §4 and §6, docs/decisiones.md D-23, D-49, D-62–D-66, D-74, D-78, D-81):
 --   · Tables are CLOSED: nobody reads or writes them directly with the public key.
---   · The 9 contract operations are 9 RPC functions. That is all the public key
+--   · The 11 contract operations are 11 RPC functions. That is all the public key
 --     can call. Each one is exposed as a REST endpoint:
 --       POST /rest/v1/rpc/<function_name>
 --     so Swift, Android or .NET consume them exactly like the web does.
@@ -24,6 +24,7 @@ create table if not exists public.variants (
   name        text not null,                -- "Default (no logeado)"
   description text not null,
   screen      jsonb not null,               -- Screen v1.2 with {{displayName}} tokens
+  kind        text not null default 'signed-in', -- 'anonymous' | 'signed-in' (D-81)
   constraint variants_id_format check (id ~ '^[a-z][a-z0-9-]*$')
 );
 
@@ -33,6 +34,11 @@ comment on table public.variants is
 -- Upgrade from the A–D presets: ids are now slugs, not single letters.
 alter table public.variants drop constraint if exists variants_id_format;
 alter table public.variants add constraint variants_id_format check (id ~ '^[a-z][a-z0-9-]*$');
+
+-- Upgrade (D-81): who the view is for. 02-seed.sql writes the real value of each view.
+alter table public.variants add column if not exists kind text not null default 'signed-in';
+alter table public.variants drop constraint if exists variants_kind_check;
+alter table public.variants add constraint variants_kind_check check (kind in ('anonymous', 'signed-in'));
 
 create table if not exists public.demo_users (
   id           text primary key,            -- sanitized: "moises", "maria-jose"
@@ -70,6 +76,17 @@ create table if not exists public.initiatives (
 comment on table public.initiatives is
   'Bottom bar initiatives (feature flags). Source: contract/fixtures/initiatives.json.';
 
+-- Demo-wide settings: a single row (D-81). The row is created by 02-seed.sql,
+-- because it references a view and views only exist after the seed.
+create table if not exists public.demo_settings (
+  id                   boolean primary key default true,
+  anonymous_variant_id text not null default 'guest' references public.variants (id),
+  constraint demo_settings_single_row check (id)
+);
+
+comment on table public.demo_settings is
+  'Single row. Anonymous view that every visitor without a session sees (D-81).';
+
 
 -- -----------------------------------------------------------------------------
 -- 2. Security: closed tables
@@ -77,13 +94,15 @@ comment on table public.initiatives is
 --    Supabase's default grants are revoked as well.
 -- -----------------------------------------------------------------------------
 
-alter table public.variants    enable row level security;
-alter table public.demo_users  enable row level security;
-alter table public.initiatives enable row level security;
+alter table public.variants      enable row level security;
+alter table public.demo_users    enable row level security;
+alter table public.initiatives   enable row level security;
+alter table public.demo_settings enable row level security;
 
-revoke all on table public.variants    from anon, authenticated;
-revoke all on table public.demo_users  from anon, authenticated;
-revoke all on table public.initiatives from anon, authenticated;
+revoke all on table public.variants      from anon, authenticated;
+revoke all on table public.demo_users    from anon, authenticated;
+revoke all on table public.initiatives   from anon, authenticated;
+revoke all on table public.demo_settings from anon, authenticated;
 
 
 -- -----------------------------------------------------------------------------
@@ -126,7 +145,8 @@ $$;
 
 -- getHomeScreen → get_home_screen
 -- The Home is public (D-69):
---   · No session (p_user_id null) or unknown user → anonymous view 'guest'.
+--   · No session (p_user_id null) or unknown user → the active anonymous view
+--     (demo_settings.anonymous_variant_id; 'guest' if the row is missing, D-81).
 --   · Registered user → the view assigned to them (starts on 'logged').
 -- Then:
 --   0. Drops the sections hidden from the panel (`hidden: true`, D-78). The
@@ -148,12 +168,13 @@ set search_path = ''
 as $$
   with viewer as (
     select
-      coalesce(u.variant_id, 'guest') as variant_id,
+      coalesce(u.variant_id, s.anonymous_variant_id, 'guest') as variant_id,
       u.display_name,
       -- display_name is already trimmed with single spaces (D-07): first word = first name.
       split_part(u.display_name, ' ', 1) as first_name
     from (select 1) as anchor
     left join public.demo_users u on u.id = p_user_id
+    left join public.demo_settings s on true
   ),
   resolved as (
     select
@@ -226,6 +247,7 @@ as $$
 $$;
 
 -- listVariants → list_variants  (metadata only; the screen is not sent here)
+-- `kind` says who the view is for: 'anonymous' or 'signed-in' (D-81).
 -- Same order as contract/fixtures/variants.json, which is the panel's order.
 create or replace function public.list_variants()
 returns json
@@ -239,10 +261,11 @@ as $$
              json_build_object(
                'id',          v.id,
                'name',        v.name,
-               'description', v.description
+               'description', v.description,
+               'kind',        v.kind
              )
              order by array_position(
-               array['guest', 'logged', 'loyalty', 'christmas', 'heavy', 'birthday'],
+               array['guest', 'guest-signup', 'logged', 'loyalty', 'christmas', 'heavy', 'birthday'],
                v.id
              ) nulls last,
              v.id
@@ -453,9 +476,55 @@ begin
 end;
 $$;
 
+-- getAnonymousVariant → get_anonymous_variant (D-81)
+-- The anonymous view every visitor without a session sees right now.
+-- 'guest' while the settings row does not exist yet (before 02-seed.sql).
+create or replace function public.get_anonymous_variant()
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce((select s.anonymous_variant_id from public.demo_settings s), 'guest');
+$$;
+
+-- setAnonymousVariant → set_anonymous_variant (D-81)
+-- Switches the anonymous view for EVERY visitor without a session (it is not a
+-- per-person split: that would be a real A/B, see docs/roadmap.md).
+-- Unknown view → error P0002. View for signed-in people → error 22023.
+-- Returns the view now active.
+create or replace function public.set_anonymous_variant(p_variant_id text)
+returns text
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_kind text;
+begin
+  select v.kind into v_kind from public.variants v where v.id = p_variant_id;
+
+  if not found then
+    raise exception 'Unknown view: %', p_variant_id using errcode = 'P0002';
+  end if;
+
+  if v_kind <> 'anonymous' then
+    raise exception 'The view % is not for people without a session', p_variant_id using errcode = '22023';
+  end if;
+
+  insert into public.demo_settings (id, anonymous_variant_id)
+  values (true, p_variant_id)
+  on conflict (id) do update
+    set anonymous_variant_id = excluded.anonymous_variant_id;
+
+  return p_variant_id;
+end;
+$$;
+
 
 -- -----------------------------------------------------------------------------
--- 4. Execute permissions: only these 9 functions, for the public key.
+-- 4. Execute permissions: only these 11 functions, for the public key.
 -- -----------------------------------------------------------------------------
 
 revoke execute on function public.upsert_user(text, text)                 from public;
@@ -467,6 +536,8 @@ revoke execute on function public.list_initiatives()                      from p
 revoke execute on function public.set_initiative_enabled(text, boolean)   from public;
 revoke execute on function public.get_variant_screen(text)                from public;
 revoke execute on function public.reorder_sections(text, text[], text[])  from public;
+revoke execute on function public.get_anonymous_variant()                 from public;
+revoke execute on function public.set_anonymous_variant(text)             from public;
 
 grant execute on function public.upsert_user(text, text)                  to anon, authenticated, service_role;
 grant execute on function public.get_home_screen(text)                    to anon, authenticated, service_role;
@@ -477,3 +548,5 @@ grant execute on function public.list_initiatives()                       to ano
 grant execute on function public.set_initiative_enabled(text, boolean)    to anon, authenticated, service_role;
 grant execute on function public.get_variant_screen(text)                 to anon, authenticated, service_role;
 grant execute on function public.reorder_sections(text, text[], text[])   to anon, authenticated, service_role;
+grant execute on function public.get_anonymous_variant()                  to anon, authenticated, service_role;
+grant execute on function public.set_anonymous_variant(text)              to anon, authenticated, service_role;

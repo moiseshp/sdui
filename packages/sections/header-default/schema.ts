@@ -1,3 +1,4 @@
+import { TriggerSchema } from '@/packages/bdui/schema/action';
 import * as z from 'zod';
 
 export const headerPositionSchema = z.enum(['static', 'sticky']);
@@ -9,8 +10,22 @@ export const headerPositionSchema = z.enum(['static', 'sticky']);
 export const headerVariantSchema = z.enum(['default', 'dark']);
 export type HeaderVariant = z.infer<typeof headerVariantSchema>;
 
+/**
+ * Triggers of the top bar buttons, keyed by semantic button name. The backend
+ * decides what each button does (e.g. `NAVIGATE` to `/ingresar`); the client
+ * only fires `onPress`. A button without actions is decorative (D-32).
+ * Shared by `header_default` and `header_greeting`.
+ */
+export const headerActionsSchema = z.object({
+  user: TriggerSchema.optional(),
+  settings: TriggerSchema.optional(),
+  cart: TriggerSchema.optional(),
+});
+export type HeaderActions = z.infer<typeof headerActionsSchema>;
+
 export const headerDefaultPropsSchema = z.object({
   position: headerPositionSchema.optional().default('sticky'),
   variant: headerVariantSchema.optional().default('default'),
+  actions: headerActionsSchema.optional(),
 });
 export type HeaderDefaultProps = z.infer<typeof headerDefaultPropsSchema>;

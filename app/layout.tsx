@@ -9,7 +9,7 @@ const font = Font({
 
 export const metadata: Metadata = {
   title: 'KFC Perú',
-  description: 'Demo BDUI — experimentación y A/B desde el backend',
+  description: 'Demo SDUI — experimentación y A/B desde el backend',
 };
 
 export default function RootLayout({

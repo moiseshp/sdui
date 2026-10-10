@@ -45,7 +45,7 @@
     "name": "Invitar a registrarse",
     "description": "Invita a crear una cuenta a quien navega sin sesión.",
     "priority": 3,
-    "audience": ["guest"],
+    "audience": ["guest", "guest-signup"],
     "enabledByDefault": true,
     "section": {
       "id": "bottom_bar_register",

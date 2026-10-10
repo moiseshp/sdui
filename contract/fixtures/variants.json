@@ -1,8 +1,9 @@
 [
-  { "id": "guest", "name": "Default (no logeado)", "description": "Lo que ve quien entra sin sesión: banner, combos, lo más top, promos de la semana y oferta." },
-  { "id": "logged", "name": "Logeado", "description": "Vista inicial al registrarse: saludo, anuncio exclusivo, elegidos para ti, favoritos y Solo por hoy." },
-  { "id": "loyalty", "name": "Loyalty", "description": "Misma home del logeado con la marca en negro y el estado de puntos del Club." },
-  { "id": "christmas", "name": "Navidad", "description": "Tema navideño: banquete, mesa navideña y pre-orden de Nochebuena." },
-  { "id": "heavy", "name": "Usuario heavy", "description": "Beneficio por frecuencia, cupón Sólo para ti y sus pedidos de siempre." },
-  { "id": "birthday", "name": "Cumpleaños", "description": "Saludo de cumpleaños, regalo del día y combos para celebrar." }
+  { "id": "guest", "kind": "anonymous", "name": "Default (no logeado)", "description": "Vender primero: banner, combos, lo más top, promos de la semana y oferta." },
+  { "id": "guest-signup", "kind": "anonymous", "name": "Enfoque registro (no logeado)", "description": "Registrar primero: cupón de bienvenida y beneficios de crear cuenta antes que los productos." },
+  { "id": "logged", "kind": "signed-in", "name": "Logeado", "description": "Vista inicial al registrarse: saludo, anuncio exclusivo, elegidos para ti, favoritos y Solo por hoy." },
+  { "id": "loyalty", "kind": "signed-in", "name": "Loyalty", "description": "Misma home del logeado con la marca en negro y el estado de puntos del Club." },
+  { "id": "christmas", "kind": "signed-in", "name": "Navidad", "description": "Tema navideño: banquete, mesa navideña y pre-orden de Nochebuena." },
+  { "id": "heavy", "kind": "signed-in", "name": "Usuario heavy", "description": "Beneficio por frecuencia, cupón Sólo para ti y sus pedidos de siempre." },
+  { "id": "birthday", "kind": "signed-in", "name": "Cumpleaños", "description": "Saludo de cumpleaños, regalo del día y combos para celebrar." }
 ]
